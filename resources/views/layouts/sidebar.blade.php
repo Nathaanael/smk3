@@ -60,7 +60,7 @@
     <div class="py-8 flex items-center gap-2" :class="(!$store.sidebar.isExpanded && !$store.sidebar.isHovered && !$store.sidebar.isMobileOpen) ? 'justify-center' : 'justify-between'">
         <a href="/">
             <div class="hidden [.sidebar-expanded_&]:block">
-                <x-common.app-logo :width="160" />
+                <x-common.app-logo :width="220" />
             </div>
             <span class="bg-brand-500 flex size-8 items-center justify-center rounded-lg text-white [.sidebar-expanded_&]:hidden">
                 <x-svg.shield-check class="size-5" />
