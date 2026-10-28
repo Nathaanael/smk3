@@ -1,4 +1,4 @@
-@php
+<!-- @php
     $notifications = [
         ['id' => '1', 'name' => 'Terry Franci', 'avatar' => '/assets/images/user/user-02.jpg', 'timeKey' => 'minAgo', 'timeCount' => 5, 'status' => 'online'],
         ['id' => '2', 'name' => 'Alena Franci', 'avatar' => '/assets/images/user/user-03.jpg', 'timeKey' => 'minAgo', 'timeCount' => 8, 'status' => 'online'],
@@ -65,4 +65,4 @@
             </x-ui.button>
         </x-ui.dropdown-menu.content>
     </x-ui.dropdown-menu>
-</div>
+</div> -->

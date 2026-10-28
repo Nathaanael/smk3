@@ -17,6 +17,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('departemen')->nullable();
+            // 1 = Auditor, 2 = Auditee, 3 = Admin
+            $table->unsignedTinyInteger('otorisasi')->default(2);
+            // Plant code (ckp, ing, psr, taa, smg); "ckp,ing" grants both CKP and ING
+            $table->string('pabrik')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

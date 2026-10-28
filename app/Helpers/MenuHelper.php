@@ -73,14 +73,6 @@ class MenuHelper
                     ['name' => 'Videos', 'path' => '/videos', 'pro' => false],
                 ],
             ],
-            [
-                'icon' => 'authentication',
-                'name' => 'Authentication',
-                'subItems' => [
-                    ['name' => 'Sign In', 'path' => '/signin', 'pro' => false],
-                    ['name' => 'Sign Up', 'path' => '/signup', 'pro' => false],
-                ],
-            ],
         ];
     }
 

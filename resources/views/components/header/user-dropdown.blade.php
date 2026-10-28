@@ -4,15 +4,15 @@
             <img width="44" height="44" src="/assets/images/user/owner.png" alt="User" />
         </span>
 
-        <span class="me-1 block text-sm font-medium">Musharof</span>
+        <span class="me-1 block text-sm font-medium">{{ Str::before(auth()->user()?->name ?? '', ' ') }}</span>
 
         <x-svg.chevron-down class="size-5 text-gray-500 duration-200 dark:text-gray-400" x-bind:class="open ? 'rotate-180' : 'rotate-0'" />
     </x-ui.dropdown-menu.trigger>
 
     <x-ui.dropdown-menu.content align="end" :side-offset="12" class="w-65 p-3">
         <div class="px-3 py-2">
-            <span class="block text-sm font-medium text-gray-700 dark:text-gray-400">Musharof Chowdhury</span>
-            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">randomuser@pimjo.com</span>
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-400">{{ auth()->user()?->name }}</span>
+            <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{{ auth()->user()?->email }}</span>
         </div>
 
         <x-ui.dropdown-menu.separator />

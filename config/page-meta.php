@@ -53,17 +53,13 @@ return [
         'title' => 'Laravel Line Chart | TailAdmin - Laravel Dashboard Template',
         'description' => 'This is Laravel Line Chart page for TailAdmin - Laravel Tailwind CSS Admin Dashboard Template',
     ],
+    '/login' => [
+        'title' => 'Masuk | SMK3 Monitoring',
+        'description' => 'Masuk ke sistem monitoring audit SMK3.',
+    ],
     '/profile' => [
         'title' => 'Profile | TailAdmin - Laravel Admin Dashboard Template',
         'description' => 'Manage your personal information, security settings, and preference on the TailAdmin Profile page.',
-    ],
-    '/signin' => [
-        'title' => 'Laravel SignIn Page | TailAdmin - Laravel Dashboard Template',
-        'description' => 'This is Laravel Signin Page TailAdmin Dashboard Template',
-    ],
-    '/signup' => [
-        'title' => 'Laravel SignUp Page | TailAdmin - Laravel Dashboard Template',
-        'description' => 'This is Laravel SignUp Page TailAdmin Dashboard Template',
     ],
     '/videos' => [
         'title' => 'Laravel Videos | TailAdmin - Laravel Dashboard Template',

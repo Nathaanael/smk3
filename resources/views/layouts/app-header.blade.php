@@ -26,8 +26,7 @@
 
             <!-- Logo (mobile only) -->
             <a href="/" class="xl:hidden">
-                <img width="154" height="32" class="dark:hidden" src="/assets/images/logo/logo.svg" alt="Logo" />
-                <img width="154" height="32" class="hidden dark:block" src="/assets/images/logo/logo-dark.svg" alt="Logo" />
+                <x-common.app-logo :width="140" />
             </a>
 
             <!-- Application menu toggle (mobile only) -->
@@ -37,7 +36,7 @@
             </x-ui.button>
 
             <!-- Search (desktop only) -->
-            <div class="hidden xl:block" x-data="{}"
+            <!-- <div class="hidden xl:block" x-data="{}"
                 @keydown.window="if (($event.metaKey || $event.ctrlKey) && $event.key.toLowerCase() === 'k') { $event.preventDefault(); $refs.searchInput?.focus(); }">
                 <form @submit.prevent>
                     <x-ui.field class="xl:w-107.5">
@@ -57,7 +56,7 @@
                         </x-ui.input-group>
                     </x-ui.field>
                 </form>
-            </div>
+            </div> -->
         </div>
 
         <!-- Right side content -->
