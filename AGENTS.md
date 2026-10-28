@@ -14,7 +14,7 @@ bootstrap/
 ├── app.php                   # Laravel application configuration & middleware setup
 config/
 ├── page-meta.php             # Per-route page <title> and meta description
-lang/                         # English UI strings (en.json)
+lang/                         # UI strings (en.json, id.json)
 public/
 └── assets/images/            # Static images, user avatars, icons, flags
 resources/
@@ -75,18 +75,13 @@ routes/
   - Component-level state: Use `x-data="{ ... }"` in Alpine.js.
   - Global theme state: Managed via `Alpine.store('theme')` (handles `light`, `dark`, and system preference synced to `localStorage`).
 
-## RTL Layout Architecture (Free Version Rules)
+## Languages & Layout Direction
 
-- **English Only (No Translations)**:
-  - Translating the UI into other languages is a Pro-only feature. Free ships English only.
-  - UI strings live in `lang/en.json` and are read with `__('key')`; there is no locale route or locale middleware.
-  - The Language menu in the user dropdown looks the same as Pro, but picking a language only changes the layout direction (Arabic → RTL, all others → LTR). The text stays English.
-- **RTL State & Toggle**:
-  - Toggled via the Language menu in the user dropdown (`user-dropdown.blade.php`), backed by `Alpine.store("direction")` in `resources/js/app.js`.
-  - Persisted in `localStorage.setItem("dir", "rtl" | "ltr")`.
-  - Dynamically updates `document.documentElement.setAttribute("dir", ...)`.
-  - Automatically closes the user dropdown after a language is selected.
-  - Immediate execution script in `<head>` of `app.blade.php` and `fullscreen-layout.blade.php` prevents flash of unstyled LTR content.
+- **English + Indonesian**:
+  - Supported locales are listed in `config('app.available_locales')` (`en`, `id`); the default is `id` (`APP_LOCALE`), the fallback is `en`.
+  - UI strings live in `lang/en.json` and `lang/id.json` and are read with `__('key')`. Every key used by a live page must exist in both files.
+  - The Language menu in the user dropdown posts to `POST /locale` (`LocaleController`), which stores the choice in the session; `App\Http\Middleware\SetLocale` applies it on every web request.
+- **Direction**: both languages are LTR, so the layout is always `dir="ltr"`. Keep using logical properties anyway:
 - **CSS Logical Properties & RTL Spacing**:
   - **Margins & Paddings**: Use `ms-*` / `me-*`, `ps-*` / `pe-*` or explicit `ltr:ml-* rtl:mr-*` variants.
   - **Positioning**: Use `start-*` / `end-*` or `ltr:left-* rtl:right-*`.
@@ -130,7 +125,7 @@ routes/
 - Don't hardcode physical directional utilities (`ml-*`, `mr-*`, `pl-*`, `pr-*`, `left-*`, `right-*`, `border-l-*`, `border-r-*`, `rounded-l-*`, `rounded-r-*`, `text-left`, `text-right`) without providing proper RTL support (`ltr:` / `rtl:` or CSS logical equivalents).
 - Don't create a `tailwind.config.js` file — Tailwind v4 configuration belongs in `resources/css/app.css`.
 - Don't hardcode user-facing strings in Blade files without adding corresponding keys to `lang/en.json`.
-- Don't add extra locale files or real translations — that is a Pro feature.
+- Don't add a key to only one of `lang/en.json` / `lang/id.json`.
 - Don't edit files in `tailadmin-laravel-pro` or the other framework projects unless explicitly asked — focus changes on this Free codebase.
 - Don't write inline CSS styles (`style="..."`) when Tailwind theme tokens and utility classes are available.
 
@@ -153,7 +148,7 @@ routes/
 
 ### Add/change a locale string
 
-1. Edit `lang/en.json`.
+1. Edit both `lang/en.json` and `lang/id.json`.
 2. Use the key in Blade: `__('key')` or `@lang('key')`.
 
 ### Modify a theme token or utility

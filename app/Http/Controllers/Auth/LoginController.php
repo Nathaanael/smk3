@@ -18,7 +18,7 @@ class LoginController extends Controller
 
     public function create(): View
     {
-        return view('pages.auth.login', ['title' => 'Masuk']);
+        return view('pages.auth.login', ['title' => __('login.title')]);
     }
 
     public function store(Request $request): RedirectResponse

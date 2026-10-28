@@ -78,9 +78,19 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'id'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+
+    /*
+    | Languages users can pick from the user dropdown. Each key needs a
+    | matching lang/<key>.json file.
+    */
+
+    'available_locales' => [
+        'en' => ['name' => 'English', 'shortName' => 'English', 'flag' => 'flag-us.svg'],
+        'id' => ['name' => 'Bahasa Indonesia', 'shortName' => 'Indonesia', 'flag' => 'flag-id.svg'],
+    ],
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 

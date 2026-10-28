@@ -21,6 +21,13 @@ class UserDropdown extends Component
      */
     public function render(): View|Closure|string
     {
-        return view('components.header.user-dropdown');
+        $languages = config('app.available_locales');
+        $currentLocale = app()->getLocale();
+
+        return view('components.header.user-dropdown', [
+            'languages' => $languages,
+            'currentLocale' => $currentLocale,
+            'currentLanguage' => $languages[$currentLocale] ?? reset($languages),
+        ]);
     }
 }

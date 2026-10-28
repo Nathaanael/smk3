@@ -1,7 +1,7 @@
 <x-ui.dropdown-menu>
     <x-ui.dropdown-menu.trigger class="dropdown-toggle flex items-center text-gray-700 dark:text-gray-400">
-        <span class="me-3 h-11 w-11 overflow-hidden rounded-lg">
-            <img width="44" height="44" src="/assets/images/user/owner.png" alt="User" />
+        <span class="me-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-600 dark:bg-brand-500/15 dark:text-brand-400" aria-hidden="true">
+            {{ Str::upper(Str::substr(trim(auth()->user()?->name ?? ''), 0, 1)) }}
         </span>
 
         <span class="me-1 block text-sm font-medium">{{ Str::before(auth()->user()?->name ?? '', ' ') }}</span>
@@ -17,49 +17,37 @@
 
         <x-ui.dropdown-menu.separator />
 
-        <x-ui.dropdown-menu.item to="/profile">
-            <x-svg.user-circle class="size-6" />
-            {{ __('userDropdown.editProfile') }}
-        </x-ui.dropdown-menu.item>
-
-        <x-ui.dropdown-menu.item to="/profile">
-            <x-svg.gear class="size-6" />
-            {{ __('userDropdown.accountSettings') }}
-        </x-ui.dropdown-menu.item>
-
-        <x-ui.dropdown-menu.item to="/profile">
-            <x-svg.info-circle class="size-6" />
-            {{ __('userDropdown.support') }}
-        </x-ui.dropdown-menu.item>
-
         <x-ui.dropdown-menu.sub>
             <x-ui.dropdown-menu.sub-trigger show-icon>
                 <x-svg.globe class="size-6" />
                 <span>{{ __('userDropdown.language') }}</span>
                 <x-ui.badge variant="light" color="gray" size="sm" class="ms-auto me-1 h-auto gap-1.5 border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 text-shadow-none dark:border-gray-800 dark:bg-white/3 dark:text-gray-300 dark:text-shadow-none [&>img]:size-3.5">
-                    <span x-text="$store.direction.current.shortName"></span>
-                    <img :src="'/assets/images/icons/' + $store.direction.current.flag" :alt="$store.direction.current.name" class="size-3.5 shrink-0 overflow-hidden rounded-full" />
+                    <span>{{ $currentLanguage['shortName'] }}</span>
+                    <img src="/assets/images/icons/{{ $currentLanguage['flag'] }}" alt="{{ $currentLanguage['name'] }}" class="size-3.5 shrink-0 overflow-hidden rounded-full" />
                 </x-ui.badge>
             </x-ui.dropdown-menu.sub-trigger>
 
             <x-ui.dropdown-menu.sub-content class="w-56 p-2">
-                <template x-for="language in $store.direction.languages" :key="language.id">
+                @foreach ($languages as $id => $language)
+                    <form id="locale-form-{{ $id }}" method="POST" action="{{ route('locale.update') }}" class="hidden">
+                        @csrf
+                        <input type="hidden" name="locale" value="{{ $id }}">
+                    </form>
                     <x-ui.dropdown-menu.item
-                        class="flex items-center justify-between gap-2"
-                        x-bind:class="$store.direction.locale === language.id && 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400'"
-                        @click="$store.direction.select(language.id)">
-                        <span class="flex items-center gap-2">
-                            <span class="size-1.5 shrink-0 rounded-full transition-opacity"
-                                x-bind:class="$store.direction.locale === language.id ? 'bg-brand-500 opacity-100 dark:bg-brand-400' : 'opacity-0'"></span>
-                            <img :src="'/assets/images/icons/' + language.flag" :alt="language.name" class="size-5 shrink-0 overflow-hidden rounded-full" />
-                            <span class="truncate" x-text="language.name"></span>
-                        </span>
-
-                        <template x-if="language.badge">
-                            <x-ui.badge variant="light" color="warning" class="rounded text-xs" x-text="language.badge"></x-ui.badge>
-                        </template>
+                        @class([
+                            'flex items-center gap-2',
+                            'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400' => $id === $currentLocale,
+                        ])
+                        x-on:click.capture="document.getElementById('locale-form-{{ $id }}').submit()">
+                        <span @class([
+                            'size-1.5 shrink-0 rounded-full',
+                            'bg-brand-500 dark:bg-brand-400' => $id === $currentLocale,
+                            'opacity-0' => $id !== $currentLocale,
+                        ])></span>
+                        <img src="/assets/images/icons/{{ $language['flag'] }}" alt="{{ $language['name'] }}" class="size-5 shrink-0 overflow-hidden rounded-full" />
+                        <span class="truncate">{{ $language['name'] }}</span>
                     </x-ui.dropdown-menu.item>
-                </template>
+                @endforeach
             </x-ui.dropdown-menu.sub-content>
         </x-ui.dropdown-menu.sub>
 

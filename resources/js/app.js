@@ -56,27 +56,6 @@ Alpine.data("dropdown", () => ({
 
 registerUi(Alpine);
 
-// Free ships English only: choosing a language only switches the layout direction (RTL for Arabic).
-Alpine.store("direction", {
-    languages: [
-        { id: "en", name: "English", shortName: "English", flag: "flag-us.svg" },
-        { id: "ar", name: "Arabic (Saudi)", shortName: "Arabic", flag: "flag-sa.svg", badge: "RTL" },
-        { id: "es", name: "Español", shortName: "Español", flag: "flag-es.svg" },
-        { id: "de", name: "Deutsch", shortName: "Deutsch", flag: "flag-de.svg" },
-    ],
-    locale: localStorage.getItem("dir") === "rtl" ? "ar" : "en",
-    get current() {
-        return this.languages.find((l) => l.id === this.locale) || this.languages[0];
-    },
-    select(id) {
-        this.locale = id;
-        const dir = id === "ar" ? "rtl" : "ltr";
-        localStorage.setItem("dir", dir);
-        document.documentElement.setAttribute("dir", dir);
-    },
-});
-
-
 Alpine.start();
 
 
