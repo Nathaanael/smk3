@@ -1,20 +1,19 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LocaleController;
-
-// Locale Switch Route
-Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
-use App\Http\Controllers\DashboardController;
 
 // dashboard pages
 Route::get('/', function () {
-    return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);
+    return redirect()->route('ecommerce');
 })->name('dashboard');
 
-// calender pages
+Route::get('/ecommerce', function () {
+    return view('pages.dashboard.ecommerce', ['title' => 'E-commerce Dashboard']);
+})->name('ecommerce');
+
+// calendar pages
 Route::get('/calendar', function () {
-    return view('pages.calender', ['title' => 'Calendar']);
+    return view('pages.calendar', ['title' => 'Calendar']);
 })->name('calendar');
 
 // profile pages
@@ -24,7 +23,7 @@ Route::get('/profile', function () {
 
 // form pages
 Route::get('/form-elements', function () {
-    return view('pages.form.form-elements', ['title' => 'Form Elements']);
+    return view('pages.forms.form-elements', ['title' => 'Form Elements']);
 })->name('form-elements');
 
 // tables pages
@@ -33,9 +32,8 @@ Route::get('/basic-tables', function () {
 })->name('basic-tables');
 
 // pages
-
 Route::get('/blank', function () {
-    return view('pages.blank', ['title' => 'Blank']);
+    return view('pages.pages.blank', ['title' => 'Blank']);
 })->name('blank');
 
 // error pages
@@ -52,7 +50,6 @@ Route::get('/bar-chart', function () {
     return view('pages.chart.bar-chart', ['title' => 'Bar Chart']);
 })->name('bar-chart');
 
-
 // authentication pages
 Route::get('/signin', function () {
     return view('pages.auth.signin', ['title' => 'Sign In']);
@@ -61,6 +58,10 @@ Route::get('/signin', function () {
 Route::get('/signup', function () {
     return view('pages.auth.signup', ['title' => 'Sign Up']);
 })->name('signup');
+
+Route::post('/logout', function () {
+    return redirect()->route('signin');
+})->name('logout');
 
 // ui elements pages
 Route::get('/alerts', function () {
@@ -72,14 +73,14 @@ Route::get('/avatars', function () {
 })->name('avatars');
 
 Route::get('/badge', function () {
-    return view('pages.ui-elements.badges', ['title' => 'Badges']);
-})->name('badges');
+    return view('pages.ui-elements.badge', ['title' => 'Badges']);
+})->name('badge');
 
 Route::get('/buttons', function () {
     return view('pages.ui-elements.buttons', ['title' => 'Buttons']);
 })->name('buttons');
 
-Route::get('/image', function () {
+Route::get('/images', function () {
     return view('pages.ui-elements.images', ['title' => 'Images']);
 })->name('images');
 
@@ -87,24 +88,5 @@ Route::get('/videos', function () {
     return view('pages.ui-elements.videos', ['title' => 'Videos']);
 })->name('videos');
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// legacy URLs
+Route::redirect('/badges', '/badge');

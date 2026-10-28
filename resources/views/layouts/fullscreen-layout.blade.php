@@ -1,19 +1,28 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="en" dir="ltr" class="h-full bg-gray-50 dark:bg-gray-900">
 
 <head>
+    <script>
+        (function () {
+            if (localStorage.getItem('dir') === 'rtl') document.documentElement.setAttribute('dir', 'rtl');
+        })();
+    </script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? 'Dashboard' }} | TailAdmin - Laravel Tailwind CSS Admin Dashboard Template</title>
+    @include('layouts.head-meta')
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Alpine.js -->
-    {{-- <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script> --}}
 
+    <!-- Theme Store -->
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
     <!-- Theme Store -->
     <script>
         document.addEventListener('alpine:init', () => {
@@ -24,39 +33,78 @@
                     this.updateTheme();
                 },
                 theme: 'light',
-                toggle() {
-                    this.theme = this.theme === 'light' ? 'dark' : 'light';
-                    localStorage.setItem('theme', this.theme);
+                resolvedTheme: 'light',
+                set(value) {
+                    value = value === 'dark' ? 'dark' : 'light';
+                    this.theme = value;
+                    localStorage.setItem('theme', value);
                     this.updateTheme();
+                    window.dispatchEvent(new CustomEvent('theme-changed', { detail: value }));
+                },
+                toggle() {
+                    this.set(this.resolvedTheme === 'dark' ? 'light' : 'dark');
                 },
                 updateTheme() {
                     const html = document.documentElement;
-                    const body = document.body;
-                    if (this.theme === 'dark') {
+                    const isDark = this.theme === 'dark';
+                    if (isDark) {
                         html.classList.add('dark');
-                        body.classList.add('dark', 'bg-gray-900');
                     } else {
                         html.classList.remove('dark');
-                        body.classList.remove('dark', 'bg-gray-900');
+                    }
+
+                    this.resolvedTheme = isDark ? 'dark' : 'light';
+                    html.dataset['theme'] = this.resolvedTheme;
+                    html.style.colorScheme = this.resolvedTheme;
+                    if (document.body) {
+                        document.body.dataset['theme'] = this.resolvedTheme;
+                        document.body.style.colorScheme = this.resolvedTheme;
                     }
                 }
             });
 
             Alpine.store('sidebar', {
-                // Initialize based on screen size
-                isExpanded: window.innerWidth >= 1280, // true for desktop, false for mobile
+                isExpanded: false,
                 isMobileOpen: false,
                 isHovered: false,
 
+                init() {
+                    const savedState = localStorage.getItem('sidebarExpanded');
+                    if (window.innerWidth >= 1280) {
+                        this.isExpanded = savedState === null ? true : savedState === 'true';
+                    } else {
+                        this.isExpanded = false;
+                    }
+                    this.isMobileOpen = false;
+
+                    window.addEventListener('resize', () => {
+                        this.handleResize();
+                    });
+                },
+
+                handleResize() {
+                    if (window.innerWidth < 1280) {
+                        if (this.isMobileOpen) {
+                             this.isMobileOpen = false;
+                        }
+                    } else {
+                        this.isMobileOpen = false;
+                        const savedState = localStorage.getItem('sidebarExpanded');
+                        this.isExpanded = savedState === null ? true : savedState === 'true';
+                    }
+                },
+
                 toggleExpanded() {
                     this.isExpanded = !this.isExpanded;
-                    // When toggling desktop sidebar, ensure mobile menu is closed
                     this.isMobileOpen = false;
+                    
+                    if (window.innerWidth >= 1280) {
+                        localStorage.setItem('sidebarExpanded', this.isExpanded);
+                    }
                 },
 
                 toggleMobileOpen() {
                     this.isMobileOpen = !this.isMobileOpen;
-                    // Don't modify isExpanded when toggling mobile menu
                 },
 
                 setMobileOpen(val) {
@@ -64,7 +112,6 @@
                 },
 
                 setHovered(val) {
-                    // Only allow hover effects on desktop when sidebar is collapsed
                     if (window.innerWidth >= 1280 && !this.isExpanded) {
                         this.isHovered = val;
                     }
@@ -74,43 +121,23 @@
     </script>
 
     <!-- Apply dark mode immediately to prevent flash -->
+
+</head>
+
+<body x-data>
+
+    <!-- Apply dark mode immediately to prevent flash -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
-            const theme = savedTheme === 'dark' ? 'dark' : 'light';
-            if (theme === 'dark') {
+            const isDark = savedTheme === 'dark';
+            if (isDark) {
                 document.documentElement.classList.add('dark');
-                if (document.body) document.body.classList.add('dark', 'bg-gray-900');
             } else {
                 document.documentElement.classList.remove('dark');
-                if (document.body) document.body.classList.remove('dark', 'bg-gray-900');
             }
         })();
     </script>
-    <!-- Apply RTL mode immediately to prevent flash -->
-    <script>
-        (function() {
-            const savedDir = localStorage.getItem("dir");
-            if (savedDir === "rtl") {
-                document.documentElement.setAttribute("dir", "rtl");
-            } else {
-                document.documentElement.setAttribute("dir", "ltr");
-            }
-        })();
-    </script>
-</head>
-
-<body x-init="$store.sidebar.isExpanded = window.innerWidth >= 1280;
-const checkMobile = () => {
-    if (window.innerWidth < 1280) {
-        $store.sidebar.setMobileOpen(false);
-        $store.sidebar.isExpanded = false;
-    } else {
-        $store.sidebar.isMobileOpen = false;
-        $store.sidebar.isExpanded = true;
-    }
-};
-window.addEventListener('resize', checkMobile);">
 
     @yield('content')
 

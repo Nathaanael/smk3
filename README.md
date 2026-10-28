@@ -203,7 +203,18 @@ This creates a unique encryption key for your application.
 
 ### Step 6: Configure Database
 
-#### Option A: Using MySQL/PostgreSQL
+#### Option A: SQLite (default)
+
+`.env.example` already sets `DB_CONNECTION=sqlite`, so no credentials are needed. Create the database file and run the migrations:
+
+```bash
+touch database/database.sqlite
+php artisan migrate
+```
+
+> **Using MySQL?** No code changes are needed. Only update the `DB_*` values in your `.env` file (set `DB_CONNECTION=mysql` and your credentials), then run `php artisan migrate`.
+
+#### Option B: Using MySQL/PostgreSQL
 
 Update your `.env` file with your database credentials:
 
@@ -444,7 +455,6 @@ tailadmin-laravel/
 │   └── views/            # Blade templates
 ├── routes/                # Route definitions
 │   ├── web.php           # Web routes
-│   ├── api.php           # API routes
 │   └── console.php       # Console routes
 ├── storage/               # Logs, cache, uploads
 │   ├── app/
@@ -493,6 +503,31 @@ php artisan optimize:clear
 - Verify database exists
 
 ## 🔄 Update Log
+
+### Version 1.3.0 - [October 28, 2026]
+
+#### Major Updates & Enhancements
+
+- **Design System Refresh**: Refactored UI components as Blade components with Alpine.js, including dropdown menus, selects, sidebars, dialogs, tooltips, and more. Updated components are organized in `resources/views/components/ui`.
+- **Updated Pages**: Refreshed and updated all pages for improved consistency, usability, and design.
+- **Improve Project Structure**: Reorganized components by feature for better maintainability and scalability.
+- **RTL Improvements**: Enhanced right-to-left (RTL) layout support and fixed related styling and alignment issues.
+- **Dependencies**: Added `tw-animate-css` and a PHP `TwMerge` helper (`app/Support/TwMerge.php`) to support the updated UI system and styling workflow.
+- **Page Metadata**: Added unique page titles and meta descriptions for every route in `config/page-meta.php`.
+- **Modular Blade Partials**: Decoupled page templates into reusable Blade partials under `resources/views/components/main`, grouped by feature.
+- **Charts**: Modularized ApexCharts with a dedicated JavaScript module per chart in `resources/js/components/chart`.
+- **Animations & Dark Mode Fixes**: The mobile sidebar now slides in with a fading overlay, and verification code inputs have a proper dark mode background.
+- **Assets**: Moved static images to `public/assets/images` and added the `/images` page route.
+- **Cleanup**: Removed unused class components, Blade partials, JavaScript modules and images, and refreshed `AGENTS.md` with common agent workflows and verification commands.
+- **Database**: The default database changed from MySQL to SQLite (`DB_CONNECTION=sqlite` in `.env.example`), so no database server is needed to get started. To use MySQL instead, only update the `DB_*` values in your `.env` file; no code changes are required.
+
+### Version 1.2.0 - [September 13, 2026]
+
+- **Dependency updates**: FullCalendar upgraded to v7 and ApexCharts / Swiper bumped to latest versions.
+- **RTL layout support**: Added right-to-left (RTL) direction support with automatic layout flipping and toggle.
+- **Language / RTL switcher**: Added switcher in user dropdown with persistent direction state in `localStorage`.
+- **Keyboard & dropdown improvements**: Enhanced dropdown behavior and click-outside handling.
+- **Tailwind CSS v4 optimizations**: Applied CSS logical properties across sidebar, tables, header, and components.
 
 ### [1.1.2] - 2026-09-02
 

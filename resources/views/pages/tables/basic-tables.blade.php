@@ -1,22 +1,22 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-common.page-breadcrumb pageTitle="From Elements" />
+    <x-common.page-breadcrumb pageTitle="Basic Tables" />
     <div class="space-y-6">
         <x-common.component-card title="Basic Table 1">
-            <x-tables.basic-tables.basic-tables-one />
+            <x-main.tables.basic-tables.table-one />
         </x-common.component-card>
         <x-common.component-card title="Basic Table 2">
-            <x-tables.basic-tables.basic-tables-two />
+            <x-main.tables.basic-tables.table-two />
         </x-common.component-card>
         <x-common.component-card title="Basic Table 3">
-            <x-tables.basic-tables.basic-tables-three />
+            <x-main.tables.basic-tables.table-three />
         </x-common.component-card>
         <x-common.component-card title="Basic Table 4">
-            <x-tables.basic-tables.basic-tables-four />
+            <x-main.tables.basic-tables.table-four />
         </x-common.component-card>
         <x-common.component-card title="Basic Table 5">
-            <x-tables.basic-tables.basic-tables-five />
+            <x-main.tables.basic-tables.table-five />
         </x-common.component-card>
     </div>
 @endsection
