@@ -39,4 +39,21 @@ return [
 
     // non_conformities.kategori
     'categories' => ['Minor', 'Major', 'Kritis'],
+
+    // The 12 SMK3 elements (PP 50/2012); a criterion belongs to the element of the
+    // first part of its number, e.g. 6.7.2 -> 6.
+    'elements' => [
+        1 => 'Pembangunan dan Pemeliharaan Komitmen',
+        2 => 'Pembuatan dan Pendokumentasian Rencana K3',
+        3 => 'Pengendalian Perancangan dan Peninjauan Kontrak',
+        4 => 'Pengendalian Dokumen',
+        5 => 'Pembelian dan Pengendalian Produk',
+        6 => 'Keamanan Bekerja Berdasarkan SMK3',
+        7 => 'Standar Pemantauan',
+        8 => 'Pelaporan dan Perbaikan Kekurangan',
+        9 => 'Pengelolaan Material dan Perpindahannya',
+        10 => 'Pengumpulan dan Penggunaan Data',
+        11 => 'Pemeriksaan SMK3',
+        12 => 'Pengembangan Keterampilan dan Kemampuan',
+    ],
 ];

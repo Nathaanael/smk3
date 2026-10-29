@@ -6,6 +6,10 @@ return [
         'title' => 'meta.dashboard.title',
         'description' => 'meta.dashboard.description',
     ],
+    '/master/clauses' => [
+        'title' => 'meta.clauses.title',
+        'description' => 'meta.clauses.description',
+    ],
     '/non-conformities' => [
         'title' => 'meta.nonConformities.title',
         'description' => 'meta.nonConformities.description',

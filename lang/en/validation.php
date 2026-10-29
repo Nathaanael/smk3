@@ -11,6 +11,8 @@ return [
         'no_klausul' => 'clause number',
         'kategori' => 'category',
         'pic' => 'PIC',
+        'no_kriteria' => 'clause number',
+        'kriteria' => 'criterion',
         'dari' => 'start date',
         'sampai' => 'end date',
     ],

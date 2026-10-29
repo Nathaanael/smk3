@@ -6,6 +6,7 @@ import { Indonesian } from "flatpickr/dist/l10n/id.js";
 import "./bootstrap";
 import initCharts from "./components/chart";
 import nonConformityList from "./components/non-conformities/list";
+import clauseMaster from "./components/master/clauses";
 import registerUi from "./ui";
 
 window.Alpine = Alpine;
@@ -60,6 +61,7 @@ Alpine.data("dropdown", () => ({
 
 registerUi(Alpine);
 Alpine.data("nonConformityList", nonConformityList);
+Alpine.data("clauseMaster", clauseMaster);
 
 Alpine.start();
 

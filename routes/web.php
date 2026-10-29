@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\Master\ClauseController;
 use App\Http\Controllers\NonConfirmities\NonConfirmitiesController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +35,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/non-conformities', [NonConfirmitiesController::class, 'store'])
         ->middleware('role:admin,auditor')
         ->name('non-conformities.store');
+
+    // master data (admin and auditor)
+    Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {
+        Route::get('/clauses', [ClauseController::class, 'index'])->name('clauses');
+        Route::post('/clauses', [ClauseController::class, 'store'])->name('clauses.store');
+        Route::get('/clauses/template', [ClauseController::class, 'template'])->name('clauses.template');
+        Route::post('/clauses/import', [ClauseController::class, 'import'])->name('clauses.import');
+        Route::put('/clauses/{criterion}', [ClauseController::class, 'update'])->name('clauses.update');
+        Route::delete('/clauses/{criterion}', [ClauseController::class, 'destroy'])->name('clauses.destroy');
+        Route::patch('/clauses/{criterion}/category', [ClauseController::class, 'toggleCategory'])->name('clauses.category');
+    });
 
     // admin pages
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {

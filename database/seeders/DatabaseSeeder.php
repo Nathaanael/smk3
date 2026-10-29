@@ -21,5 +21,7 @@ class DatabaseSeeder extends Seeder
             'otorisasi' => 3,
             'pabrik' => 'ckp',
         ]);
+
+        $this->call(Smk3CriterionSeeder::class);
     }
 }
