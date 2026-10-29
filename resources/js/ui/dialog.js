@@ -5,7 +5,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
 
 /**
  * Modal dialog behaviour for <x-ui.dialog>: focus moves into the dialog and is trapped there, Escape and a press on the
- * overlay close it, page scrolling is locked and focus returns to the trigger on close.
+ * overlay close it, page scrolling is locked and focus returns to the trigger on close. Closing dispatches `dialog-closed`.
  */
 export default () => ({
     open: false,
@@ -36,6 +36,8 @@ export default () => ({
         this.open = false;
         this.unmount();
         (this.previousFocus ?? this.$refs.trigger)?.focus?.();
+        // lets a form inside clear itself: x-on:dialog-closed="reset()"
+        this.$dispatch('dialog-closed');
     },
 
     mount() {

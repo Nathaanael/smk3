@@ -16,12 +16,15 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 /**
  * Excel template download and bulk upload for the SMK3 criteria master.
  *
- * Layout (one sheet, header on row 1): No Klausul | Kriteria | Minor | Major | Kritis,
+ * Layout (one sheet, header on row 1): No Klausul | Kriteria | Minor | Major | Kritis | Kata Kunci,
  * where the category columns hold 1 (allowed) or 0 (not allowed).
  */
 class Smk3CriterionSpreadsheet
 {
     public const HEADERS = ['No Klausul', 'Kriteria', 'Minor', 'Major', 'Kritis'];
+
+    /** Optional column: files without it leave the keywords untouched. */
+    public const KEYWORDS_HEADER = 'Kata Kunci';
 
     /** Rows below the data that still get the 1/0 dropdown, for adding new criteria. */
     private const SPARE_ROWS = 100;
@@ -42,7 +45,7 @@ class Smk3CriterionSpreadsheet
 
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Klausul SMK3');
-        $sheet->fromArray(self::HEADERS);
+        $sheet->fromArray([...self::HEADERS, self::KEYWORDS_HEADER]);
 
         $sheet->fromArray($criteria->map(fn (Smk3Criterion $criterion) => [
             $criterion->no_kriteria,
@@ -50,12 +53,13 @@ class Smk3CriterionSpreadsheet
             (int) $criterion->minor,
             (int) $criterion->major,
             (int) $criterion->kritis,
+            $criterion->kata_kunci,
         ])->all(), null, 'A2', true);
 
         $lastRow = $criteria->count() + 1;
         $validationEnd = $lastRow + self::SPARE_ROWS;
 
-        $sheet->getStyle('A1:E1')->applyFromArray([
+        $sheet->getStyle('A1:F1')->applyFromArray([
             'font' => ['bold' => true],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F2F4F7']],
             'borders' => ['bottom' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D0D5DD']]],
@@ -67,11 +71,15 @@ class Smk3CriterionSpreadsheet
         $sheet->getStyle("A2:A{$validationEnd}")->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
         $sheet->getStyle("C1:E{$validationEnd}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_TOP);
 
+        $sheet->getStyle("F2:F{$validationEnd}")->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+        $sheet->getComment('F1')->getText()->createTextRun(__('clause.form.keywordsHint'));
+
         $sheet->getColumnDimension('A')->setWidth(14);
         $sheet->getColumnDimension('B')->setWidth(90);
         foreach (['C', 'D', 'E'] as $column) {
             $sheet->getColumnDimension($column)->setWidth(10);
         }
+        $sheet->getColumnDimension('F')->setWidth(40);
 
         $validation = new DataValidation;
         $validation->setType(DataValidation::TYPE_LIST)
@@ -85,7 +93,7 @@ class Smk3CriterionSpreadsheet
         $sheet->setDataValidation("C2:E{$validationEnd}", $validation);
 
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter("A1:E{$lastRow}");
+        $sheet->setAutoFilter("A1:F{$lastRow}");
 
         return $spreadsheet;
     }
@@ -93,7 +101,9 @@ class Smk3CriterionSpreadsheet
     /**
      * Read an uploaded template.
      *
-     * @return array{rows: list<array{row: int, no_kriteria: string, kriteria: string, minor: bool, major: bool, kritis: bool}>, errors: list<string>}
+     * Rows carry kata_kunci only when the file has the optional "Kata Kunci" column.
+     *
+     * @return array{rows: list<array{row: int, no_kriteria: string, kriteria: string, kata_kunci?: ?string, minor: bool, major: bool, kritis: bool}>, errors: list<string>}
      */
     public function read(UploadedFile $file): array
     {
@@ -109,6 +119,7 @@ class Smk3CriterionSpreadsheet
             }
             $columns[$name] = $index;
         }
+        $keywordsColumn = array_search(mb_strtolower(self::KEYWORDS_HEADER), $header, true);
 
         $rows = [];
         $errors = [];
@@ -154,7 +165,11 @@ class Smk3CriterionSpreadsheet
                 $flags[$column] = $flag;
             }
 
-            $rows[] = ['row' => $line, 'no_kriteria' => $number, 'kriteria' => $text] + $flags;
+            $row = ['row' => $line, 'no_kriteria' => $number, 'kriteria' => $text] + $flags;
+            if ($keywordsColumn !== false) {
+                $row['kata_kunci'] = implode(', ', Smk3Criterion::parseKeywords((string) ($cells[$keywordsColumn] ?? ''))) ?: null;
+            }
+            $rows[] = $row;
         }
 
         if ($rows === [] && $errors === []) {
@@ -180,7 +195,7 @@ class Smk3CriterionSpreadsheet
             $nextNumber = (int) $existing->max('nomor') + 1;
 
             foreach ($rows as $row) {
-                $attributes = collect($row)->only(['kriteria', 'minor', 'major', 'kritis'])->all();
+                $attributes = collect($row)->only(['kriteria', 'kata_kunci', 'minor', 'major', 'kritis'])->all();
                 $criterion = $existing->get($row['no_kriteria']);
 
                 if (! $criterion) {

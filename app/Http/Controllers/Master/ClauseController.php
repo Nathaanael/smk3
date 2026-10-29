@@ -50,6 +50,7 @@ class ClauseController extends Controller
             'active' => $active,
             'search' => $search,
             'summary' => Smk3Criterion::summary(),
+            'templateElements' => $this->templateElements(),
         ])->fragmentIf($request->header('X-Partial') === 'results', 'results');
     }
 
@@ -120,15 +121,46 @@ class ClauseController extends Controller
         ]);
     }
 
-    public function template(Smk3CriterionSpreadsheet $spreadsheet): StreamedResponse
+    /**
+     * Template filled with the current criteria; optionally only those of the chosen elements
+     * (uploading a partial template only touches the clauses it contains).
+     */
+    public function template(Request $request, Smk3CriterionSpreadsheet $spreadsheet): StreamedResponse
     {
-        $workbook = $spreadsheet->template(Smk3Criterion::ordered());
+        $elements = $request->validate([
+            'elements' => ['nullable', 'array'],
+            'elements.*' => ['integer', 'distinct', Rule::in(array_keys($this->templateElements()))],
+        ])['elements'] ?? [];
+        $elements = array_map('intval', $elements);
+        sort($elements);
+
+        $criteria = Smk3Criterion::ordered()
+            ->when($elements, fn ($criteria) => $criteria->filter(fn (Smk3Criterion $criterion) => in_array($criterion->element(), $elements, true))->values());
+
+        $workbook = $spreadsheet->template($criteria);
+        $all = $elements === [] || count($elements) === count($this->templateElements());
+        $filename = $all ? 'template-klausul-smk3.xlsx' : 'template-klausul-smk3-elemen-'.implode('-', $elements).'.xlsx';
 
         return response()->streamDownload(function () use ($workbook) {
             IOFactory::createWriter($workbook, 'Xlsx')->save('php://output');
-        }, 'template-klausul-smk3.xlsx', [
+        }, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    /**
+     * Every element (from config, plus any element only present in the data) with its name
+     * and number of criteria, for the template download menu.
+     *
+     * @return array<int, array{name: ?string, count: int}>
+     */
+    private function templateElements(): array
+    {
+        $counts = Smk3Criterion::countPerElement();
+        $elements = config('smk3.elements') + array_fill_keys(array_keys($counts), null);
+        ksort($elements);
+
+        return collect($elements)->map(fn (?string $name, int $element) => ['name' => $name, 'count' => $counts[$element] ?? 0])->all();
     }
 
     public function import(Request $request, Smk3CriterionSpreadsheet $spreadsheet): RedirectResponse
@@ -156,13 +188,14 @@ class ClauseController extends Controller
     }
 
     /**
-     * @return array{no_kriteria: string, kriteria: string, minor: bool, major: bool, kritis: bool}
+     * @return array{no_kriteria: string, kriteria: string, kata_kunci: ?string, minor: bool, major: bool, kritis: bool}
      */
     private function validateCriterion(Request $request, ?Smk3Criterion $criterion = null): array
     {
         $validated = $request->validateWithBag('clause', [
             'no_kriteria' => ['required', 'string', 'max:20', 'regex:'.Smk3Criterion::NUMBER_PATTERN, Rule::unique('smk3_kriteria', 'no_kriteria')->ignore($criterion)],
             'kriteria' => ['required', 'string', 'max:2000'],
+            'kata_kunci' => ['nullable', 'string', 'max:1000'],
             'minor' => ['boolean'],
             'major' => ['boolean'],
             'kritis' => ['boolean'],
@@ -172,6 +205,8 @@ class ClauseController extends Controller
         foreach (array_keys(Smk3Criterion::CATEGORIES) as $column) {
             $validated[$column] = (bool) ($validated[$column] ?? false);
         }
+
+        $validated['kata_kunci'] = implode(', ', Smk3Criterion::parseKeywords($validated['kata_kunci'] ?? null)) ?: null;
 
         return $validated;
     }

@@ -2,6 +2,7 @@
 
 use App\Enums\Role;
 use App\Models\NonConformity;
+use App\Models\Smk3Criterion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -60,7 +61,7 @@ test('an auditee without departments sees only findings where they are the PIC',
 test('the PIC must belong to the department of the finding', function () {
     $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
         ->post('/non-conformities', findingPayload(['departemen' => 'OIL']))
-        ->assertSessionHasErrorsIn('createFinding', ['pic' => __('nc.create.picOutsideDepartment')]);
+        ->assertSessionHasErrors(['pic' => __('nc.create.picOutsideDepartment')]);
 });
 
 test('users assigned to ckp,ing see both plants', function () {
@@ -123,6 +124,9 @@ test('an empty state is shown when nothing matches', function () {
 function findingPayload(array $overrides = []): array
 {
     $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'TEKNIK,QC']);
+    Smk3Criterion::firstOrCreate(['no_kriteria' => '1.2.3'], [
+        'nomor' => 1, 'kriteria' => 'Tanggung jawab K3 ditetapkan', 'minor' => true, 'major' => true, 'kritis' => false,
+    ]);
 
     return array_merge([
         'tanggal' => '2026-10-29',
@@ -174,7 +178,7 @@ test('a finding is rejected when it does not fit the users plants', function (ar
 
     $this->actingAs($auditor)
         ->post('/non-conformities', findingPayload($overrides))
-        ->assertSessionHasErrorsIn('createFinding', $field);
+        ->assertSessionHasErrors($field);
 
     expect(NonConformity::count())->toBe(0);
 })->with([
@@ -182,7 +186,40 @@ test('a finding is rejected when it does not fit the users plants', function (ar
     'department of another plant' => [['departemen' => 'premix'], 'departemen'],
     'pic is not an auditee' => [['pic' => 'nobody@example.com'], 'pic'],
     'unknown category' => [['kategori' => 'Ringan'], 'kategori'],
+    'clause not in the master' => [['no_klausul' => '99.9.9'], 'no_klausul'],
 ]);
+
+test('the category must be ticked for the clause in the clause master', function () {
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
+        ->post('/non-conformities', findingPayload(['kategori' => 'Kritis']))
+        ->assertSessionHasErrors(['kategori' => __('nc.create.categoryNotAllowed', ['category' => 'Kritis', 'clause' => '1.2.3'])]);
+
+    expect(NonConformity::count())->toBe(0);
+});
+
+test('the add finding page is a page of its own for admins and auditors', function () {
+    Smk3Criterion::create(['nomor' => 1, 'no_kriteria' => '6.7.7', 'kriteria' => 'Alat keadaan darurat tersedia', 'minor' => true, 'major' => false, 'kritis' => false]);
+
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
+        ->get('/non-conformities/create')
+        ->assertOk()
+        ->assertSee(__('nc.create.saveAndAnother'))
+        ->assertSee('6.7.7');
+
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp']))
+        ->get('/non-conformities/create')
+        ->assertForbidden();
+});
+
+test('save and add another returns to an empty form that keeps date, plant and department', function () {
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
+        ->post('/non-conformities', findingPayload(['another' => '1']))
+        ->assertRedirect(route('non-conformities.create'))
+        ->assertSessionHas('success')
+        ->assertSessionHas('keep', ['tanggal' => '2026-10-29', 'pabrik' => 'ckp', 'departemen' => 'TEKNIK']);
+
+    expect(NonConformity::count())->toBe(1);
+});
 
 test('the PIC name is shown instead of the email', function () {
     $pic = User::factory()->create(['name' => 'Rina Auditee', 'otorisasi' => Role::Auditee, 'pabrik' => 'ckp']);
@@ -197,7 +234,7 @@ test('validation messages are in Indonesian by default', function () {
     $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
         ->post('/non-conformities', findingPayload(['deskripsi_temuan' => '']));
 
-    expect(session('errors')->getBag('createFinding')->first('deskripsi_temuan'))->toBe('Deskripsi temuan wajib diisi.');
+    expect(session('errors')->first('deskripsi_temuan'))->toBe('Deskripsi temuan wajib diisi.');
 });
 
 test('ajax requests receive only the results fragment', function () {

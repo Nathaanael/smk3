@@ -20,6 +20,7 @@ class Smk3Criterion extends Model
         'nomor',
         'no_kriteria',
         'kriteria',
+        'kata_kunci',
         'minor',
         'major',
         'kritis',
@@ -53,7 +54,9 @@ class Smk3Criterion extends Model
     public function scopeSearch(Builder $query, ?string $term): void
     {
         $query->when($term, fn (Builder $query) => $query->where(function (Builder $query) use ($term) {
-            $query->where('no_kriteria', 'like', "%{$term}%")->orWhere('kriteria', 'like', "%{$term}%");
+            $query->where('no_kriteria', 'like', "%{$term}%")
+                ->orWhere('kriteria', 'like', "%{$term}%")
+                ->orWhere('kata_kunci', 'like', "%{$term}%");
         }));
     }
 
@@ -67,6 +70,28 @@ class Smk3Criterion extends Model
         return static::query()->search($term)->pluck('no_kriteria')
             ->countBy(fn (string $number) => (int) strtok($number, '.'))
             ->all();
+    }
+
+    /**
+     * Keywords for clause suggestions, from "Tikus, hama ,kecoa" -> ['tikus', 'hama', 'kecoa'].
+     *
+     * @return list<string>
+     */
+    public function keywords(): array
+    {
+        return self::parseKeywords($this->kata_kunci);
+    }
+
+    /**
+     * Normalise a comma/semicolon separated keyword list: lower case, trimmed, no duplicates.
+     *
+     * @return list<string>
+     */
+    public static function parseKeywords(?string $value): array
+    {
+        $keywords = array_map(fn (string $keyword) => mb_strtolower(trim(preg_replace('/\s+/', ' ', $keyword))), preg_split('/[,;\n]/', (string) $value));
+
+        return array_values(array_unique(array_filter($keywords)));
     }
 
     /** SMK3 element number, taken from the first part of the clause number. */

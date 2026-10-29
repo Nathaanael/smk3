@@ -10,6 +10,7 @@
         'id' => old('_id') ? (int) old('_id') : null,
         'no' => old('no_kriteria', ''),
         'text' => old('kriteria', ''),
+        'keywords' => old('kata_kunci', ''),
         'minor' => (bool) old('minor'),
         'major' => (bool) old('major'),
         'kritis' => (bool) old('kritis'),
@@ -19,12 +20,12 @@
     x-data="{
         storeUrl: @js(route('master.clauses.store')),
         updateUrl: @js(route('master.clauses.update', ':id')),
-        form: { id: null, no: '', text: '', minor: true, major: false, kritis: false },
+        form: { id: null, no: '', text: '', keywords: '', minor: true, major: false, kritis: false },
         submitting: false,
         fill(row) {
             this.form = row
-                ? { id: row.id, no: row.no, text: row.text, minor: row.minor, major: row.major, kritis: row.kritis }
-                : { id: null, no: '', text: '', minor: true, major: false, kritis: false };
+                ? { id: row.id, no: row.no, text: row.text, keywords: row.keywords ?? '', minor: row.minor, major: row.major, kritis: row.kritis }
+                : { id: null, no: '', text: '', keywords: '', minor: true, major: false, kritis: false };
             this.submitting = false;
         },
         get action() {
@@ -64,6 +65,17 @@
                     <x-ui.textarea id="clause-text" name="kriteria" x-model="form.text" rows="4" required maxlength="2000"
                         :aria-invalid="$bag->has('kriteria') ? 'true' : null" />
                     @error('kriteria', 'clause') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
+                </div>
+
+                <div>
+                    <label for="clause-keywords" class="{{ $labelClass }}">
+                        {{ __('clause.form.keywords') }}
+                        <span class="font-normal text-gray-400 dark:text-gray-500">({{ __('nc.create.optional') }})</span>
+                    </label>
+                    <x-ui.input id="clause-keywords" name="kata_kunci" x-model="form.keywords" maxlength="1000"
+                        placeholder="{{ __('clause.form.keywordsPlaceholder') }}" :aria-invalid="$bag->has('kata_kunci') ? 'true' : null" />
+                    <p class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{{ __('clause.form.keywordsHint') }}</p>
+                    @error('kata_kunci', 'clause') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                 </div>
 
                 <fieldset>

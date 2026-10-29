@@ -187,12 +187,12 @@ test('the template contains the current clauses and can be uploaded back', funct
     file_put_contents($path, $response->streamedContent());
     $rows = IOFactory::load($path)->getActiveSheet()->toArray(null, true, false, false);
 
-    expect($rows[0])->toBe(['No Klausul', 'Kriteria', 'Minor', 'Major', 'Kritis'])
-        ->and($rows[1])->toEqual(['1.1.1', 'Terdapat kebijakan K3 sesuai ketentuan', 1, 1, 0]);
+    expect($rows[0])->toBe(['No Klausul', 'Kriteria', 'Minor', 'Major', 'Kritis', 'Kata Kunci'])
+        ->and($rows[1])->toEqual(['1.1.1', 'Terdapat kebijakan K3 sesuai ketentuan', 1, 1, 0, null]);
 
     // switch Kritis on for 1.1.2 and add a new clause, then upload
     $rows[2][4] = 1;
-    $rows[] = ['13.1.1', 'Klausul tambahan', 1, 0, 0];
+    $rows[] = ['13.1.1', 'Klausul tambahan', 1, 0, 0, 'Tikus; HAMA , tikus'];
 
     $this->actingAs(auditor())
         ->post('/master/clauses/import', ['file' => clauseWorkbook($rows)])
@@ -200,7 +200,64 @@ test('the template contains the current clauses and can be uploaded back', funct
         ->assertSessionHas('success', __('clause.import.done', ['created' => 1, 'updated' => 1, 'unchanged' => 1]));
 
     expect(Smk3Criterion::where('no_kriteria', '1.1.2')->value('kritis'))->toBeTrue()
-        ->and(Smk3Criterion::where('no_kriteria', '13.1.1')->exists())->toBeTrue();
+        ->and(Smk3Criterion::where('no_kriteria', '13.1.1')->value('kata_kunci'))->toBe('tikus, hama');
+});
+
+test('keywords are saved normalised and shown in the table', function () {
+    $this->actingAs(auditor())
+        ->post('/master/clauses', ['no_kriteria' => '6.4.9', 'kriteria' => 'Kebersihan area kerja', 'kata_kunci' => ' Tikus,hama ;  KECOA,tikus', 'minor' => '1'])
+        ->assertSessionHas('success');
+
+    expect(Smk3Criterion::where('no_kriteria', '6.4.9')->value('kata_kunci'))->toBe('tikus, hama, kecoa');
+
+    $this->actingAs(auditor())->get('/master/clauses?element=6')->assertSeeInOrder(['Kebersihan area kerja', 'tikus', 'hama', 'kecoa']);
+});
+
+test('an upload without the Kata Kunci column keeps the keywords', function () {
+    criterion(['no_kriteria' => '1.1.1', 'kata_kunci' => 'tikus']);
+
+    $this->actingAs(auditor())
+        ->post('/master/clauses/import', ['file' => clauseWorkbook([
+            ['No Klausul', 'Kriteria', 'Minor', 'Major', 'Kritis'],
+            ['1.1.1', 'Teks baru', 1, 1, 0],
+        ])])
+        ->assertSessionHas('success');
+
+    expect(Smk3Criterion::where('no_kriteria', '1.1.1')->value('kata_kunci'))->toBe('tikus');
+});
+
+test('the template can hold only the chosen elements', function () {
+    criterion(['no_kriteria' => '1.1.1']);
+    criterion(['no_kriteria' => '6.7.2', 'kriteria' => 'Keadaan darurat']);
+    criterion(['no_kriteria' => '12.1.1', 'kriteria' => 'Pelatihan']);
+
+    $response = $this->actingAs(auditor())->get('/master/clauses/template?'.http_build_query(['elements' => [12, 6]]));
+    $response->assertOk()->assertDownload('template-klausul-smk3-elemen-6-12.xlsx');
+
+    $path = tempnam(sys_get_temp_dir(), 'template').'.xlsx';
+    file_put_contents($path, $response->streamedContent());
+    $numbers = array_column(array_slice(IOFactory::load($path)->getSheet(0)->toArray(null, true, false, false), 1), 0);
+
+    expect(array_values(array_filter($numbers)))->toBe(['6.7.2', '12.1.1']);
+});
+
+test('unknown elements are refused with a message for the loading toast', function () {
+    criterion(['no_kriteria' => '1.1.1']);
+
+    $this->actingAs(auditor())
+        ->getJson('/master/clauses/template?'.http_build_query(['elements' => [99]]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('elements.0');
+});
+
+test('the template menu lists every element with its number of clauses', function () {
+    criterion(['no_kriteria' => '6.7.2']);
+    criterion(['no_kriteria' => '6.7.3']);
+
+    $this->actingAs(auditor())->get('/master/clauses')
+        ->assertOk()
+        ->assertSee(__('clause.template.chooseElements'))
+        ->assertSeeInOrder([__('clause.element', ['number' => 6]), 'Keamanan Bekerja Berdasarkan SMK3', '2']);
 });
 
 test('an upload with problems saves nothing and lists every problem', function () {

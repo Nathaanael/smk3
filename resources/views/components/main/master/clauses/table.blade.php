@@ -28,7 +28,16 @@
                     x-bind:class="isDirty({{ $criterion->id }}) && 'bg-warning-50/60 hover:bg-warning-50 dark:bg-warning-500/5 dark:hover:bg-warning-500/10'">
                     <td class="{{ $cellClass }} text-center text-gray-500 dark:text-gray-500">{{ $loop->iteration }}</td>
                     <td class="{{ $cellClass }} font-semibold whitespace-nowrap text-gray-800 dark:text-white/90">{{ $criterion->no_kriteria }}</td>
-                    <td class="{{ $cellClass }} leading-relaxed">{{ $criterion->kriteria }}</td>
+                    <td class="{{ $cellClass }} leading-relaxed">
+                        {{ $criterion->kriteria }}
+                        @if ($criterion->keywords())
+                            <span class="mt-1.5 flex flex-wrap gap-1" title="{{ __('clause.form.keywords') }}">
+                                @foreach ($criterion->keywords() as $keyword)
+                                    <x-ui.badge color="gray" size="sm">{{ $keyword }}</x-ui.badge>
+                                @endforeach
+                            </span>
+                        @endif
+                    </td>
                     @foreach (Smk3Criterion::CATEGORIES as $column => $label)
                         <td @class([$cellClass, 'text-center', 'border-s border-gray-100 dark:border-gray-800' => $loop->first])>
                             <div class="flex justify-center">

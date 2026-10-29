@@ -8,6 +8,8 @@
             q: @js($search),
             summary: @js($summary),
             saveUrl: @js(route('master.clauses.categories')),
+            templateUrl: @js(route('master.clauses.template')),
+            templateElements: @js(array_keys($templateElements)),
         })"
         data-save-error="{{ __('clause.saveError') }}"
         data-load-error="{{ __('clause.loadError') }}">
@@ -65,10 +67,7 @@
                         <x-svg.plus class="size-5" />
                         {{ __('clause.add') }}
                     </x-ui.button>
-                    <x-ui.button variant="outline" as="a" href="{{ route('master.clauses.template') }}">
-                        <x-svg.arrow-down class="size-5" />
-                        {{ __('clause.download') }}
-                    </x-ui.button>
+                    <x-main.master.clauses.template-menu :elements="$templateElements" />
                     <x-main.master.clauses.upload-dialog />
                     <span class="text-theme-xs text-gray-500 dark:text-gray-400">{{ __('clause.bulkHint') }}</span>
                 </div>
@@ -95,6 +94,7 @@
                             'id' => $criterion->id,
                             'no' => $criterion->no_kriteria,
                             'text' => $criterion->kriteria,
+                            'keywords' => $criterion->kata_kunci,
                             'minor' => $criterion->minor,
                             'major' => $criterion->major,
                             'kritis' => $criterion->kritis,
@@ -138,5 +138,6 @@
 
         <x-main.master.clauses.form-dialog />
         <x-main.master.clauses.delete-dialog />
+        <x-common.download-toast show="downloadingTemplate" cancel="cancelTemplateDownload()" :title="Js::from(__('clause.template.preparing'))" />
     </div>
 @endsection

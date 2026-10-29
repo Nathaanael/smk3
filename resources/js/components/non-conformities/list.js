@@ -2,15 +2,38 @@
  * Non-Conformities list: search + filter panel that reload only the results
  * (a Blade fragment) over AJAX and keep the URL in sync.
  *
- * Usage: x-data="nonConformityList({ url, filters, departments })"
+ * Also handles the row actions: ticking rows for bulk open / closed / delete, deleting
+ * one row, and uploading a photo straight into a photo cell.
+ *
+ * Usage: x-data="nonConformityList({ url, filters, departments, bulkUrl, destroyUrl, photoUrl })"
  *   filters     – current query values (q, pabrik, departemen, kategori, status, dari, sampai, per_page)
  *   departments – { plantCode: { departmentCode: name } } for the plants the user can see
+ *   destroyUrl  – DELETE url with ":id"; photoUrl – POST url with ":id" and ":field"
  */
+import { downloadFile } from '../../lib/download';
+
 const FILTER_KEYS = ['pabrik', 'departemen', 'kategori', 'status', 'dari', 'sampai'];
 
-export default ({ url, filters = {}, departments = {} }) => ({
+const EXPORT_COLUMNS_KEY = 'nc.exportColumns';
+
+export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUrl = null, photoUrl = null, exportUrl = null, exportColumns = [] }) => ({
     url,
     departments,
+    // export menu: ticked columns (remembered per browser) and "only the ticked rows"
+    exportColumnList: exportColumns,
+    exportKeys: rememberedColumns(exportColumns),
+    exportSelectedOnly: false,
+    // format being prepared ('xlsx' / 'pdf'), shown in the loading toast
+    exporting: null,
+    exportController: null,
+    // ticked rows of the current page (ids as strings, like checkbox values)
+    selected: [],
+    pageIds: [],
+    pendingDelete: [],
+    notice: '',
+    error: '',
+    busy: false,
+    uploading: {},
     q: filters.q ?? '',
     pabrik: filters.pabrik ?? '',
     departemen: filters.departemen ?? '',
@@ -31,8 +54,9 @@ export default ({ url, filters = {}, departments = {} }) => ({
     },
 
     get activeFilterCount() {
-        // a date range counts once
-        return FILTER_KEYS.filter((key) => key !== 'sampai' && this[key]).length;
+        // "from" and "to" together count as one date filter
+        const dates = this.dari || this.sampai ? 1 : 0;
+        return FILTER_KEYS.filter((key) => key !== 'dari' && key !== 'sampai' && this[key]).length + dates;
     },
 
     query() {
@@ -55,16 +79,9 @@ export default ({ url, filters = {}, departments = {} }) => ({
         this.apply();
     },
 
-    setDates({ from, to }) {
-        this.dari = from;
-        this.sampai = to;
-        this.apply();
-    },
-
     reset() {
         FILTER_KEYS.forEach((key) => (this[key] = ''));
-        const picker = this.$refs.dateRange?.querySelector('[x-data]');
-        if (picker) window.Alpine.$data(picker).clear(true);
+        this.$refs.dateRange?.querySelectorAll('[data-date-input]').forEach((input) => window.Alpine.$data(input).clear(true));
         this.apply();
     },
 
@@ -110,4 +127,152 @@ export default ({ url, filters = {}, departments = {} }) => ({
         this.perPage = event.target.value;
         this.apply();
     },
+
+    /** Called by the results fragment; a new page starts with nothing ticked. */
+    setPageIds(ids) {
+        this.pageIds = ids.map(String);
+        this.selected = [];
+    },
+
+    get allSelected() {
+        return this.pageIds.length > 0 && this.pageIds.every((id) => this.selected.includes(id));
+    },
+
+    get someSelected() {
+        return this.selected.length > 0 && !this.allSelected;
+    },
+
+    toggleAll(checked) {
+        this.selected = checked ? [...this.pageIds] : [];
+    },
+
+    /** Bulk "open" / "closed" from the action menu; delete goes through the confirm dialog. */
+    async bulk(action, ids = this.selected) {
+        if (!ids.length || this.busy) return;
+        await this.send(() => window.axios.post(bulkUrl, { action, ids }));
+    },
+
+    /** Ask for confirmation before deleting the given ids (one row, or the ticked rows). */
+    confirmDelete(ids = this.selected) {
+        if (!ids.length) return;
+        this.pendingDelete = ids.map(String);
+        this.$dispatch('finding-delete');
+    },
+
+    async deleteConfirmed() {
+        const ids = this.pendingDelete;
+        if (ids.length === 1) {
+            await this.send(() => window.axios.delete(destroyUrl.replace(':id', ids[0])));
+        } else {
+            await this.bulk('delete', ids);
+        }
+        this.pendingDelete = [];
+    },
+
+    /** Upload a photo straight from a table cell, then reload the page of results. */
+    async uploadPhoto(id, field, event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        const key = `${id}.${field}`;
+        const data = new FormData();
+        data.append('photo', file);
+        this.uploading[key] = true;
+        try {
+            await this.send(() => window.axios.post(photoUrl.replace(':id', id).replace(':field', field), data));
+        } finally {
+            delete this.uploading[key];
+        }
+    },
+
+    get allExportColumns() {
+        return this.exportKeys.length === this.exportColumnList.length;
+    },
+
+    toggleExportColumns(checked) {
+        this.exportKeys = checked ? this.exportColumnList.map((column) => column.key) : [];
+        this.rememberExportColumns();
+    },
+
+    rememberExportColumns() {
+        try {
+            window.localStorage.setItem(EXPORT_COLUMNS_KEY, JSON.stringify(this.exportKeys));
+        } catch (error) {
+            // storage blocked (private window): the choice just is not remembered
+        }
+    },
+
+    /** Download link: current search / filters, the ticked columns and optionally the ticked rows. */
+    exportHref(format) {
+        const params = new URLSearchParams(this.query());
+        params.delete('page');
+        params.delete('per_page');
+        params.set('format', format);
+        this.exportKeys.forEach((key) => params.append('columns[]', key));
+        if (this.exportSelectedOnly) this.selected.forEach((id) => params.append('ids[]', id));
+        return `${exportUrl}?${params}`;
+    },
+
+    /**
+     * Fetch the export in the background (the page shows its own loading toast instead of the
+     * browser's), then save it under the file name the server gave.
+     */
+    async download(format) {
+        if (this.exporting || !this.exportKeys.length) return;
+
+        this.exportController = new AbortController();
+        this.exporting = format;
+        this.notice = '';
+        this.error = '';
+
+        try {
+            await downloadFile(this.exportHref(format), {
+                signal: this.exportController.signal,
+                fallbackName: `export.${format}`,
+                errorMessage: this.$root.dataset.actionError,
+            });
+        } catch (error) {
+            if (error.name !== 'AbortError') this.error = error.message || this.$root.dataset.actionError;
+        } finally {
+            this.exporting = null;
+            this.exportController = null;
+        }
+    },
+
+    cancelDownload() {
+        this.exportController?.abort();
+    },
+
+    /** Run a request, show its message (or the validation error) and refresh the results. */
+    async send(request) {
+        this.busy = true;
+        this.notice = '';
+        this.error = '';
+        try {
+            const { data } = await request();
+            this.notice = data.message ?? '';
+            await this.load();
+        } catch (error) {
+            const errors = error.response?.data?.errors;
+            this.error = (errors && Object.values(errors)[0]?.[0]) ?? error.response?.data?.message ?? this.$root.dataset.actionError;
+        } finally {
+            this.busy = false;
+        }
+    },
 });
+
+/** Export columns picked last time in this browser, else the default ones. */
+function rememberedColumns(columns) {
+    const keys = columns.map((column) => column.key);
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(EXPORT_COLUMNS_KEY) ?? 'null');
+        if (Array.isArray(saved)) {
+            const valid = saved.filter((key) => keys.includes(key));
+            if (valid.length) return valid;
+        }
+    } catch (error) {
+        // unreadable or blocked storage: fall back to the defaults
+    }
+    return columns.filter((column) => column.default).map((column) => column.key);
+}

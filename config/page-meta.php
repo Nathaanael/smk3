@@ -22,6 +22,10 @@ return [
         'title' => 'meta.nonConformities.title',
         'description' => 'meta.nonConformities.description',
     ],
+    '/non-conformities/create' => [
+        'title' => 'meta.createFinding.title',
+        'description' => 'meta.createFinding.description',
+    ],
     '/progress-monitoring' => [
         'title' => 'meta.progressMonitoring.title',
         'description' => 'meta.progressMonitoring.description',

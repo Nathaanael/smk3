@@ -18,7 +18,8 @@
             <ol class="list-decimal space-y-1.5 ps-5 text-sm text-gray-600 dark:text-gray-400">
                 <li>
                     {{ __('clause.uploadDialog.step1') }}
-                    <a href="{{ route('master.clauses.template') }}" class="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400">{{ __('clause.download') }}</a>
+                    <button type="button" x-on:click="downloadTemplate(true)" x-bind:disabled="downloadingTemplate"
+                        class="font-medium text-brand-500 hover:text-brand-600 disabled:opacity-50 dark:text-brand-400">{{ __('clause.download') }}</button>
                 </li>
                 <li>{{ __('clause.uploadDialog.step2') }}</li>
                 <li>{{ __('clause.uploadDialog.step3') }}</li>

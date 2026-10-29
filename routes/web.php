@@ -5,6 +5,8 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Master\AuditeeController;
 use App\Http\Controllers\Master\AuditorController;
 use App\Http\Controllers\Master\ClauseController;
+use App\Http\Controllers\NonConfirmities\FindingActionsController;
+use App\Http\Controllers\NonConfirmities\FindingExportController;
 use App\Http\Controllers\NonConfirmities\NonConfirmitiesController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,9 +36,28 @@ Route::middleware('auth')->group(function () {
     })->name('progress-monitoring');
 
     Route::get('/non-conformities', [NonConfirmitiesController::class, 'index'])->name('non-conformities');
+    Route::get('/non-conformities/create', [NonConfirmitiesController::class, 'create'])
+        ->middleware('role:admin,auditor')
+        ->name('non-conformities.create');
     Route::post('/non-conformities', [NonConfirmitiesController::class, 'store'])
         ->middleware('role:admin,auditor')
         ->name('non-conformities.store');
+    Route::get('/non-conformities/clause-suggestions', [NonConfirmitiesController::class, 'suggestClauses'])
+        ->middleware(['role:admin,auditor', 'throttle:120,1'])
+        ->name('non-conformities.clause-suggestions');
+    Route::get('/non-conformities/export', FindingExportController::class)->name('non-conformities.export');
+    Route::post('/non-conformities/bulk', [FindingActionsController::class, 'bulk'])
+        ->middleware('role:admin,auditor')
+        ->name('non-conformities.bulk');
+    Route::middleware('role:admin,auditor')->group(function () {
+        Route::get('/non-conformities/{finding}/edit', [NonConfirmitiesController::class, 'edit'])->name('non-conformities.edit');
+        Route::put('/non-conformities/{finding}', [NonConfirmitiesController::class, 'update'])->name('non-conformities.update');
+        Route::delete('/non-conformities/{finding}', [NonConfirmitiesController::class, 'destroy'])->name('non-conformities.destroy');
+    });
+    // auditees may add the repair photo; the controller checks which photo each role may set
+    Route::post('/non-conformities/{finding}/photos/{field}', [FindingActionsController::class, 'photo'])
+        ->whereIn('field', ['foto_temuan', 'foto_perbaikan'])
+        ->name('non-conformities.photo');
 
     // master data (admin and auditor)
     Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {

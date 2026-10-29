@@ -67,9 +67,16 @@
                     </x-ui.native-select>
                 </div>
 
-                <div @class(['sm:col-span-2' => count($plants) > 1]) x-ref="dateRange" x-on:date-range-change="setDates($event.detail)">
-                    <span class="{{ $labelClass }}">{{ __('nc.dateRange') }}</span>
-                    <x-common.date-range-input :from="$filters['dari'] ?? null" :to="$filters['sampai'] ?? null" :placeholder="__('nc.allDates')" />
+                {{-- two separate dates; each limits the other so "to" cannot fall before "from" --}}
+                <div class="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2" x-ref="dateRange">
+                    <div x-on:date-change="dari = $event.detail.value; apply()">
+                        <label for="filter-dari" class="{{ $labelClass }}">{{ __('nc.dateFrom') }}</label>
+                        <x-common.date-input id="filter-dari" :value="$filters['dari'] ?? null" :placeholder="__('nc.anyDate')" max="sampai" />
+                    </div>
+                    <div x-on:date-change="sampai = $event.detail.value; apply()">
+                        <label for="filter-sampai" class="{{ $labelClass }}">{{ __('nc.dateTo') }}</label>
+                        <x-common.date-input id="filter-sampai" :value="$filters['sampai'] ?? null" :placeholder="__('nc.anyDate')" min="dari" />
+                    </div>
                 </div>
             </div>
 

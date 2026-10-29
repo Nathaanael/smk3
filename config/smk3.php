@@ -45,6 +45,22 @@ return [
     // non_conformities.kategori
     'categories' => ['Minor', 'Major', 'Kritis'],
 
+    /*
+    | Scores of the inspection report (Excel / PDF export), per department.
+    | Each list maps "at least this percentage" => score, highest first; matches the
+    | legacy hygiene report template (template_pdf.pdf).
+    |  - closed:      % of findings closed (Action Progress)
+    |  - achievement: % of criteria without a finding, (total - NC) / total (Kriteria)
+    | Total Score = closed score + achievement score.
+    */
+    'report' => [
+        'scores' => [
+            'closed' => [80 => 5, 70 => 4, 60 => 3, 50 => 2, 0 => 1],
+            'achievement' => [80 => 3, 60 => 2, 0 => 1],
+        ],
+        'timezone' => 'Asia/Jakarta',
+    ],
+
     // The 12 SMK3 elements (PP 50/2012); a criterion belongs to the element of the
     // first part of its number, e.g. 6.7.2 -> 6.
     'elements' => [
