@@ -28,6 +28,12 @@ class AuditeeController extends AccountController
         return 'pages.master.auditee';
     }
 
+    /** An auditee can be responsible for several departments; they see the findings of each. */
+    protected function multipleDepartments(): bool
+    {
+        return true;
+    }
+
     protected function emailChanged(string $from, string $to): void
     {
         NonConformity::where('pic', $from)->update(['pic' => $to]);

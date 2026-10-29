@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -75,5 +76,20 @@ class NonConformity extends Model
     public function scopeInPlants(Builder $query, array $plants): void
     {
         $query->whereIn('pabrik', $plants);
+    }
+
+    /**
+     * Findings a user may see: those of their plants, and for an auditee only those of
+     * their own departments plus any finding they are the PIC of.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $query->inPlants($user->accessiblePlants());
+
+        if ($user->otorisasi === Role::Auditee) {
+            $query->where(fn (Builder $query) => $query
+                ->whereIn('departemen', $user->departmentCodes())
+                ->orWhere('pic', $user->email));
+        }
     }
 }

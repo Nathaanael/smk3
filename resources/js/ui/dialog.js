@@ -71,9 +71,13 @@ export default () => ({
         content.addEventListener('keydown', trap);
         this.cleanup.push(() => content.removeEventListener('keydown', trap));
 
-        // Focus the first field with the caret at the end (no highlighted text).
+        // Focus the field marked data-autofocus, else the first field, with the caret at the end (no highlighted text).
+        // Mark another field when the first one reacts to focus (a date picker opens its calendar).
         requestAnimationFrame(() => {
-            const target = content.querySelector('input:not([type="hidden"]), textarea, select') ?? content.querySelector(FOCUSABLE) ?? content;
+            const target = content.querySelector('[data-autofocus]')
+                ?? content.querySelector('input:not([type="hidden"]), textarea, select')
+                ?? content.querySelector(FOCUSABLE)
+                ?? content;
             target.focus({ preventScroll: true });
             if ((target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
                 try { target.setSelectionRange(target.value.length, target.value.length); } catch (e) { /* unsupported input type */ }

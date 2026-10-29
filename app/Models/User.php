@@ -80,7 +80,7 @@ class User extends Authenticatable
      */
     public function plantCodes(): array
     {
-        return self::splitPlants($this->pabrik);
+        return self::splitList($this->pabrik);
     }
 
     public function plantLabel(): string
@@ -88,9 +88,22 @@ class User extends Authenticatable
         return strtoupper(implode(' + ', $this->plantCodes())) ?: '-';
     }
 
+    /**
+     * Department codes stored in users.departemen; auditees may hold several ("OIL,BMB").
+     *
+     * @return list<string>
+     */
+    public function departmentCodes(): array
+    {
+        return self::splitList($this->departemen);
+    }
+
     public function departmentName(): ?string
     {
-        return self::departmentsForPlant($this->pabrik)[$this->departemen] ?? $this->departemen;
+        $names = self::departmentsForPlant($this->pabrik);
+        $codes = $this->departmentCodes();
+
+        return $codes ? implode(', ', array_map(fn (string $code) => $names[$code] ?? $code, $codes)) : null;
     }
 
     /**
@@ -111,16 +124,18 @@ class User extends Authenticatable
      */
     public static function departmentsForPlant(?string $pabrik): array
     {
-        $codes = self::splitPlants($pabrik);
+        $codes = self::splitList($pabrik);
 
         return array_merge(...array_map(fn (string $code) => NonConformity::departmentsFor($code), $codes ?: [null]));
     }
 
     /**
+     * "a,b" column value -> ['a', 'b'] (users.pabrik, users.departemen).
+     *
      * @return list<string>
      */
-    private static function splitPlants(?string $pabrik): array
+    private static function splitList(?string $value): array
     {
-        return array_values(array_filter(array_map('trim', explode(',', (string) $pabrik))));
+        return array_values(array_filter(array_map('trim', explode(',', (string) $value))));
     }
 }

@@ -37,12 +37,49 @@ test('auditors only see auditees of their own plants', function () {
 test('an auditee can be added manually', function () {
     $this->actingAs(User::factory()->admin()->create())
         ->post('/master/auditee', [
-            'name' => 'Dewi', 'email' => 'dewi@indofood.co.id', 'pabrik' => 'ckp', 'departemen' => 'WHFG',
+            'name' => 'Dewi', 'email' => 'dewi@indofood.co.id', 'pabrik' => 'ckp', 'departemen' => ['WHFG', 'QC'],
             'password' => 'rahasia123', 'password_confirmation' => 'rahasia123',
         ])
         ->assertRedirect('/master/auditee');
 
-    expect(User::where('email', 'dewi@indofood.co.id')->value('otorisasi'))->toBe(Role::Auditee);
+    $dewi = User::where('email', 'dewi@indofood.co.id')->sole();
+    expect($dewi->otorisasi)->toBe(Role::Auditee)
+        ->and($dewi->departemen)->toBe('WHFG,QC')
+        ->and($dewi->departmentName())->toBe('Warehouse FG, Quality Control');
+});
+
+test('an auditee needs at least one department of their plant', function (array $departments) {
+    $this->actingAs(User::factory()->admin()->create())
+        ->post('/master/auditee', [
+            'name' => 'Dewi', 'email' => 'dewi@indofood.co.id', 'pabrik' => 'ckp', 'departemen' => $departments,
+            'password' => 'rahasia123', 'password_confirmation' => 'rahasia123',
+        ])
+        ->assertSessionHasErrorsIn('account');
+
+    expect(User::where('email', 'dewi@indofood.co.id')->exists())->toBeFalse();
+})->with([
+    'none' => [[]],
+    'department of another plant' => [['OIL', 'premix']],
+]);
+
+test('several departments can be uploaded for an auditee, but not for an auditor', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->post('/master/auditee/import', ['file' => accountWorkbook([
+            ACCOUNT_HEADERS,
+            ['Citra', 'citra@indofood.co.id', '12345678', 'OIL, bmb; Quality Control', 'ckp'],
+            ['Dodi', 'dodi@indofood.co.id', '12345678', 'HR (FASUM, LINGKUNGAN, OFFICE)', 'ckp'],
+        ])])
+        ->assertSessionHas('success');
+
+    expect(User::where('email', 'citra@indofood.co.id')->value('departemen'))->toBe('OIL,BMB,QC')
+        ->and(User::where('email', 'dodi@indofood.co.id')->value('departemen'))->toBe('HR');
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post('/master/auditor/import', ['file' => accountWorkbook([
+            ACCOUNT_HEADERS,
+            ['Eko', 'eko@indofood.co.id', '12345678', 'OIL, BMB', 'ckp'],
+        ])])
+        ->assertSessionHas('importErrors');
 });
 
 test('changing an auditee email carries their findings along', function () {
@@ -50,7 +87,7 @@ test('changing an auditee email carries their findings along', function () {
     $finding = NonConformity::factory()->create(['pic' => 'lama@indofood.co.id']);
 
     $this->actingAs(User::factory()->admin()->create())
-        ->put("/master/auditee/{$auditee->id}", ['name' => $auditee->name, 'email' => 'baru@indofood.co.id', 'pabrik' => 'ckp', 'departemen' => 'OIL'])
+        ->put("/master/auditee/{$auditee->id}", ['name' => $auditee->name, 'email' => 'baru@indofood.co.id', 'pabrik' => 'ckp', 'departemen' => ['OIL']])
         ->assertRedirect('/master/auditee');
 
     expect($finding->fresh()->pic)->toBe('baru@indofood.co.id');

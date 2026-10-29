@@ -2,13 +2,14 @@
     Body of an account master page (auditor, auditee).
     routeName is the route name prefix, e.g. "master.auditors".
 --}}
-@props(['role', 'description', 'routeName', 'accounts', 'plants', 'plantOptions', 'departments', 'summary'])
+@props(['role', 'description', 'routeName', 'accounts', 'plants', 'plantOptions', 'departments', 'summary', 'multipleDepartments' => false])
 @php
     $rows = $accounts->map(fn ($account) => [
         'id' => $account->id,
         'name' => $account->name,
         'email' => $account->email,
         'departemen' => $account->departemen,
+        'departments' => $account->departmentCodes(),
         'departmentName' => $account->departmentName(),
         'pabrik' => $account->pabrik,
         'plants' => $account->plantCodes(),
@@ -75,6 +76,7 @@
         :store-url="route($routeName.'.store')"
         :update-url="route($routeName.'.update', ':id')"
         :plant-options="$plantOptions"
-        :departments="$departments" />
+        :departments="$departments"
+        :multiple-departments="$multipleDepartments" />
     <x-main.master.accounts.delete-dialog :role="$role" :destroy-url="route($routeName.'.destroy', ':id')" />
 </div>

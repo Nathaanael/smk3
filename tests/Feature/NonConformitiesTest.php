@@ -26,10 +26,41 @@ test('non-admins only see findings from their own plant', function () {
     NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan CKP', 'pabrik' => 'ckp']);
     NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan PSR', 'pabrik' => 'psr']);
 
-    $this->actingAs(User::factory()->create(['pabrik' => 'ckp']))
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
         ->get('/non-conformities')
         ->assertSee('Temuan CKP')
         ->assertDontSee('Temuan PSR');
+});
+
+test('auditees only see findings of their own departments or where they are the PIC', function () {
+    $auditee = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'OIL,BMB']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan OIL', 'pabrik' => 'ckp', 'departemen' => 'OIL']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan BMB', 'pabrik' => 'ckp', 'departemen' => 'BMB']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan QC', 'pabrik' => 'ckp', 'departemen' => 'QC']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan sebagai PIC', 'pabrik' => 'ckp', 'departemen' => 'HR', 'pic' => $auditee->email]);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan OIL PSR', 'pabrik' => 'psr', 'departemen' => 'OIL']);
+
+    $this->actingAs($auditee)
+        ->get('/non-conformities')
+        ->assertSee('Temuan OIL')
+        ->assertSee('Temuan BMB')
+        ->assertSee('Temuan sebagai PIC')
+        ->assertDontSee('Temuan QC')
+        ->assertDontSee('Temuan OIL PSR');
+});
+
+test('an auditee without departments sees only findings where they are the PIC', function () {
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan OIL', 'pabrik' => 'ckp', 'departemen' => 'OIL']);
+
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => null]))
+        ->get('/non-conformities')
+        ->assertDontSee('Temuan OIL');
+});
+
+test('the PIC must belong to the department of the finding', function () {
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']))
+        ->post('/non-conformities', findingPayload(['departemen' => 'OIL']))
+        ->assertSessionHasErrorsIn('createFinding', ['pic' => __('nc.create.picOutsideDepartment')]);
 });
 
 test('users assigned to ckp,ing see both plants', function () {
@@ -37,7 +68,7 @@ test('users assigned to ckp,ing see both plants', function () {
     NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan ING', 'pabrik' => 'ing']);
     NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan SMG', 'pabrik' => 'smg']);
 
-    $this->actingAs(User::factory()->create(['pabrik' => 'ckp,ing']))
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp,ing']))
         ->get('/non-conformities')
         ->assertSee('Temuan CKP')
         ->assertSee('Temuan ING')
@@ -91,7 +122,7 @@ test('an empty state is shown when nothing matches', function () {
 
 function findingPayload(array $overrides = []): array
 {
-    $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp']);
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'TEKNIK,QC']);
 
     return array_merge([
         'tanggal' => '2026-10-29',

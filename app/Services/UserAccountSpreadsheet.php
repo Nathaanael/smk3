@@ -37,7 +37,7 @@ class UserAccountSpreadsheet
      * @param  Collection<int, User>  $users
      * @param  array<string, string>  $plantOptions  users.pabrik values the uploader may use
      */
-    public function template(Collection $users, array $plantOptions, string $title): Spreadsheet
+    public function template(Collection $users, array $plantOptions, string $title, bool $multipleDepartments = false): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
         $spreadsheet->getProperties()->setTitle($title)->setCreator(config('app.name'));
@@ -49,7 +49,7 @@ class UserAccountSpreadsheet
             $user->name,
             $user->email,
             null,
-            $user->departemen,
+            implode(', ', $user->departmentCodes()),
             $user->pabrik,
         ])->all(), null, 'A2', true);
 
@@ -72,7 +72,12 @@ class UserAccountSpreadsheet
         $departments = array_merge(...array_map(fn (string $plant) => User::departmentsForPlant($plant), array_keys($plantOptions)));
         $reference = $this->referenceSheet($spreadsheet, $plantOptions, $departments);
 
-        $sheet->setDataValidation("D2:D{$validationEnd}", $this->listValidation("'{$reference->getTitle()}'!\$D\$2:\$D\$".(count($departments) + 1)));
+        if ($multipleDepartments) {
+            // a dropdown would only allow one value per cell
+            $sheet->getComment('D1')->getText()->createTextRun(__('account.template.departmentsNote'));
+        } else {
+            $sheet->setDataValidation("D2:D{$validationEnd}", $this->listValidation("'{$reference->getTitle()}'!\$D\$2:\$D\$".(count($departments) + 1)));
+        }
         $sheet->setDataValidation("E2:E{$validationEnd}", $this->listValidation("'{$reference->getTitle()}'!\$A\$2:\$A\$".(count($plantOptions) + 1)));
 
         $sheet->freezePane('A2');
@@ -88,7 +93,7 @@ class UserAccountSpreadsheet
      * @param  array<string, string>  $plantOptions  users.pabrik values the uploader may use
      * @return array{rows: list<array{row: int, user: ?User, name: string, email: string, password: ?string, departemen: string, pabrik: string}>, errors: list<string>}
      */
-    public function read(UploadedFile $file, Role $role, array $plantOptions): array
+    public function read(UploadedFile $file, Role $role, array $plantOptions, bool $multipleDepartments = false): array
     {
         $data = IOFactory::load($file->getRealPath())->getSheet(0)->toArray(null, true, false, false);
 
@@ -119,7 +124,7 @@ class UserAccountSpreadsheet
                 continue;
             }
 
-            $problem = $this->problem($row, $line, $role, $plantOptions, $allowedPlants, $existing, $seen);
+            $problem = $this->problem($row, $line, $role, $plantOptions, $allowedPlants, $existing, $seen, $multipleDepartments);
             if ($problem !== null) {
                 $errors[] = $problem;
 
@@ -133,7 +138,7 @@ class UserAccountSpreadsheet
                 'name' => $row['name'],
                 'email' => $row['email'],
                 'password' => $row['password'] === '' ? null : $row['password'],
-                'departemen' => $this->department($row['departemen'], $pabrik),
+                'departemen' => $this->department($row['departemen'], $pabrik, $multipleDepartments),
                 'pabrik' => $pabrik,
             ];
         }
@@ -191,7 +196,7 @@ class UserAccountSpreadsheet
      * @param  Collection<string, User>  $existing
      * @param  array<string, int>  $seen
      */
-    private function problem(array $row, int $line, Role $role, array $plantOptions, array $allowedPlants, Collection $existing, array &$seen): ?string
+    private function problem(array $row, int $line, Role $role, array $plantOptions, array $allowedPlants, Collection $existing, array &$seen, bool $multipleDepartments): ?string
     {
         if ($row['name'] === '') {
             return __('account.import.missingName', ['row' => $line]);
@@ -221,7 +226,7 @@ class UserAccountSpreadsheet
         if (! isset($plantOptions[$pabrik])) {
             return __('account.import.badPlant', ['row' => $line, 'value' => $row['pabrik']]);
         }
-        if ($this->department($row['departemen'], $pabrik) === null) {
+        if ($this->department($row['departemen'], $pabrik, $multipleDepartments) === null) {
             return __('account.import.badDepartment', ['row' => $line, 'value' => $row['departemen'], 'plant' => strtoupper($pabrik)]);
         }
 
@@ -241,10 +246,35 @@ class UserAccountSpreadsheet
         return implode(',', array_filter(preg_split('/\s*[,+]\s*/', mb_strtolower($value))));
     }
 
-    /** Department code from a code or name, case-insensitive; null when unknown for the plant. */
-    private function department(string $value, string $pabrik): ?string
+    /**
+     * Department code(s) for users.departemen, from codes or names, case-insensitive; null when
+     * a department is unknown for the plant. With $multiple, "OIL, BMB" -> "OIL,BMB".
+     */
+    private function department(string $value, string $pabrik, bool $multiple = false): ?string
     {
-        $value = mb_strtolower($value);
+        // a whole-cell match first: some names contain commas ("HR (FASUM, LINGKUNGAN, OFFICE)")
+        if ($code = $this->departmentCode($value, $pabrik)) {
+            return $code;
+        }
+        if (! $multiple) {
+            return null;
+        }
+
+        $codes = [];
+        foreach (array_filter(array_map('trim', preg_split('/[,;]/', $value))) as $part) {
+            $code = $this->departmentCode($part, $pabrik);
+            if ($code === null) {
+                return null;
+            }
+            $codes[$code] = $code;
+        }
+
+        return $codes ? implode(',', $codes) : null;
+    }
+
+    private function departmentCode(string $value, string $pabrik): ?string
+    {
+        $value = mb_strtolower(trim($value));
 
         foreach (User::departmentsForPlant($pabrik) as $code => $name) {
             if ($value === mb_strtolower($code) || $value === mb_strtolower($name)) {

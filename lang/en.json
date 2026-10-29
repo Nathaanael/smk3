@@ -1209,11 +1209,11 @@
     "nc.create.chooseDepartment": "Choose department",
     "nc.create.chooseCategory": "Choose category",
     "nc.create.choosePic": "Choose auditee PIC",
-    "nc.create.noAuditee": "No auditee registered for this plant",
+    "nc.create.noAuditee": "No auditee registered for this plant/department",
     "nc.create.clausePlaceholder": "e.g. 1.1.1",
     "nc.create.findingPlaceholder": "Describe the audit finding...",
     "nc.create.optional": "optional",
-    "nc.create.photoHint": "JPG, PNG or GIF, up to 5 MB.",
+    "nc.create.photoHint": "JPG, PNG or GIF, up to 10 MB. Photos are scaled down automatically when saved.",
     "nc.create.cancel": "Cancel",
     "nc.create.save": "Save",
     "nc.columns.id": "ID",
@@ -2762,7 +2762,7 @@
     "account.import.shortPassword": "Row :row: password must be at least :min characters.",
     "meta.auditees.title": "Auditees | SMK3 Monitoring",
     "meta.auditees.description": "SMK3 auditee accounts.",
-    "account.auditeeDescription": "Auditee accounts are the PICs who follow up findings in their department. Auditors only see accounts in their own plants.",
+    "account.auditeeDescription": "Auditee accounts are the PICs who follow up findings. An auditee can hold several departments and only sees the findings of those departments. Auditors only see accounts in their own plants.",
     "account.inUse": "Account :name cannot be deleted because it is the PIC of :count findings.",
     "account.showing": "Showing :from–:to of :total accounts",
     "clause.tabsLabel": "SMK3 elements",
@@ -2772,5 +2772,9 @@
     "clause.noChanges": "No category changes yet.",
     "clause.discard": "Discard",
     "clause.saveChanges": "Save changes",
-    "clause.categoriesSaved": "Categories of :count clauses saved."
+    "clause.categoriesSaved": "Categories of :count clauses saved.",
+    "account.form.departments": "Departments",
+    "account.form.departmentsHint": "Pick one or more. The auditee only sees findings of the selected departments.",
+    "account.template.departmentsNote": "More than one department is allowed, separated by commas. Example: OIL, BMB. The codes are listed on the Referensi sheet.",
+    "nc.create.picOutsideDepartment": "The PIC must be an auditee of this finding's plant and department."
 }

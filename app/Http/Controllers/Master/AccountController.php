@@ -28,6 +28,12 @@ abstract class AccountController extends Controller
 
     abstract protected function view(): string;
 
+    /** Whether an account may belong to several departments (stored as "OIL,BMB"). */
+    protected function multipleDepartments(): bool
+    {
+        return false;
+    }
+
     /** Called inside the update transaction when an account's email changes. */
     protected function emailChanged(string $from, string $to): void {}
 
@@ -48,6 +54,7 @@ abstract class AccountController extends Controller
             'accounts' => $accounts,
             'plants' => array_intersect_key(config('smk3.plants'), array_flip($plants)),
             'plantOptions' => $plantOptions,
+            'multipleDepartments' => $this->multipleDepartments(),
             'departments' => collect($plantOptions)->keys()->mapWithKeys(fn (string $pabrik) => [$pabrik => User::departmentsForPlant($pabrik)])->all(),
             'summary' => ['total' => $accounts->count()] + collect($plants)->mapWithKeys(fn (string $plant) => [
                 $plant => $accounts->filter(fn (User $account) => in_array($plant, $account->plantCodes(), true))->count(),
@@ -104,7 +111,7 @@ abstract class AccountController extends Controller
     public function template(Request $request, UserAccountSpreadsheet $spreadsheet): StreamedResponse
     {
         $role = $this->role()->name;
-        $workbook = $spreadsheet->template($this->accounts($request->user()), $this->plantOptions($request->user()), $role);
+        $workbook = $spreadsheet->template($this->accounts($request->user()), $this->plantOptions($request->user()), $role, $this->multipleDepartments());
 
         return response()->streamDownload(function () use ($workbook) {
             IOFactory::createWriter($workbook, 'Xlsx')->save('php://output');
@@ -119,7 +126,7 @@ abstract class AccountController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx', 'max:2048'],
         ]);
 
-        ['rows' => $rows, 'errors' => $errors] = $spreadsheet->read($request->file('file'), $this->role(), $this->plantOptions($request->user()));
+        ['rows' => $rows, 'errors' => $errors] = $spreadsheet->read($request->file('file'), $this->role(), $this->plantOptions($request->user()), $this->multipleDepartments());
 
         // nothing is saved unless the whole file is valid
         if ($errors !== []) {
@@ -182,13 +189,22 @@ abstract class AccountController extends Controller
     private function validateAccount(Request $request, ?User $account = null): array
     {
         $pabrik = $request->input('pabrik');
+        $department = Rule::in(array_keys(User::departmentsForPlant(is_string($pabrik) ? $pabrik : null)));
 
-        return $request->validateWithBag('account', [
+        $validated = $request->validateWithBag('account', [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($account)],
             'pabrik' => ['required', Rule::in(array_keys($this->plantOptions($request->user())))],
-            'departemen' => ['required', Rule::in(array_keys(User::departmentsForPlant(is_string($pabrik) ? $pabrik : null)))],
+            ...($this->multipleDepartments()
+                ? ['departemen' => ['required', 'array', 'min:1'], 'departemen.*' => ['distinct', $department]]
+                : ['departemen' => ['required', 'string', $department]]),
             'password' => [$account ? 'nullable' : 'required', 'string', 'min:'.UserAccountSpreadsheet::MIN_PASSWORD, 'confirmed'],
         ]);
+
+        if (is_array($validated['departemen'])) {
+            $validated['departemen'] = implode(',', $validated['departemen']);
+        }
+
+        return $validated;
     }
 }

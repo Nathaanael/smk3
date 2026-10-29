@@ -35,7 +35,17 @@
                             </div>
                         </div>
                     </td>
-                    <td class="{{ $cellClass }} whitespace-nowrap">{{ $user->departmentName() ?? '-' }}</td>
+                    <td class="{{ $cellClass }}">
+                        @if (count($user->departmentCodes()) > 1)
+                            <div class="flex max-w-72 flex-wrap gap-1">
+                                @foreach ($user->departmentCodes() as $code)
+                                    <x-ui.badge color="gray" size="sm" title="{{ \App\Models\User::departmentsForPlant($user->pabrik)[$code] ?? $code }}">{{ $code }}</x-ui.badge>
+                                @endforeach
+                            </div>
+                        @else
+                            <span class="whitespace-nowrap">{{ $user->departmentName() ?? '-' }}</span>
+                        @endif
+                    </td>
                     <td class="{{ $cellClass }} whitespace-nowrap">
                         <x-ui.badge color="gray" size="sm">{{ $user->plantLabel() }}</x-ui.badge>
                     </td>

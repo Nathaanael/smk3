@@ -15,12 +15,17 @@
         get departmentOptions() {
             return Object.entries(this.departments[this.plant] ?? {});
         },
+        /** Auditees of the chosen plant and department (an auditee only sees findings of their departments). */
         get picOptions() {
-            return this.auditees.filter((auditee) => auditee.plants.includes(this.plant));
+            return this.auditees.filter((auditee) => auditee.plants.includes(this.plant)
+                && (!this.department || auditee.departments.includes(this.department)));
         },
         changePlant() {
             this.department = '';
             this.pic = '';
+        },
+        changeDepartment() {
+            if (!this.picOptions.some((auditee) => auditee.email === this.pic)) this.pic = '';
         },
     }"
     class="contents"
@@ -69,20 +74,14 @@
 
                 <div>
                     <label for="create-departemen" class="{{ $labelClass }}">{{ __('nc.department') }}</label>
-                    <x-ui.native-select id="create-departemen" name="departemen" x-model="department" required>
+                    {{-- autofocus here: focusing the date field first would pop its calendar open --}}
+                    <x-ui.native-select id="create-departemen" name="departemen" x-model="department" x-on:change="changeDepartment()" required data-autofocus>
                         <option value="">{{ __('nc.create.chooseDepartment') }}</option>
                         <template x-for="[code, name] in departmentOptions" :key="code">
                             <option :value="code" x-text="name" :selected="code === department"></option>
                         </template>
                     </x-ui.native-select>
                     @error('departemen', 'createFinding') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
-                </div>
-
-                <div>
-                    <label for="create-no-klausul" class="{{ $labelClass }}">{{ __('nc.columns.clause') }}</label>
-                    <x-ui.input type="text" id="create-no-klausul" name="no_klausul" value="{{ old('no_klausul') }}" maxlength="50" required
-                        placeholder="{{ __('nc.create.clausePlaceholder') }}" />
-                    @error('no_klausul', 'createFinding') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                 </div>
 
                 <div>
@@ -96,7 +95,8 @@
                     @error('kategori', 'createFinding') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                 </div>
 
-                <div @class(['sm:col-span-2' => count($plants) <= 1])>
+                {{-- fills the row alone when the plant field takes a cell (keeps the grid without gaps) --}}
+                <div @class(['sm:col-span-2' => count($plants) > 1])>
                     <label for="create-pic" class="{{ $labelClass }}">{{ __('nc.columns.pic') }}</label>
                     <x-ui.native-select id="create-pic" name="pic" x-model="pic" required>
                         <option value="" x-text="picOptions.length ? @js(__('nc.create.choosePic')) : @js(__('nc.create.noAuditee'))"></option>
@@ -112,6 +112,13 @@
                     <x-ui.textarea id="create-deskripsi" name="deskripsi_temuan" rows="4" maxlength="2000" required
                         placeholder="{{ __('nc.create.findingPlaceholder') }}">{{ old('deskripsi_temuan') }}</x-ui.textarea>
                     @error('deskripsi_temuan', 'createFinding') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
+                </div>
+
+                <div class="sm:col-span-2">
+                    <label for="create-no-klausul" class="{{ $labelClass }}">{{ __('nc.columns.clause') }}</label>
+                    <x-ui.input type="text" id="create-no-klausul" name="no_klausul" value="{{ old('no_klausul') }}" maxlength="50" required
+                        placeholder="{{ __('nc.create.clausePlaceholder') }}" />
+                    @error('no_klausul', 'createFinding') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                 </div>
 
                 <div class="sm:col-span-2">

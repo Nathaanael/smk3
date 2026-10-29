@@ -22,6 +22,7 @@ return [
         'string' => ':Attribute minimal :min karakter.',
     ],
     'confirmed' => 'Konfirmasi :attribute tidak cocok.',
+    'dimensions' => 'Ukuran gambar :attribute terlalu besar.',
     'required' => ':Attribute wajib diisi.',
     'string' => ':Attribute harus berupa teks.',
 

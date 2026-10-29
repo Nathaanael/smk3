@@ -3,16 +3,17 @@
     Reopens with the old input when validation fails.
 --}}
 @use('App\Services\UserAccountSpreadsheet')
-@props(['role', 'storeUrl', 'updateUrl', 'plantOptions' => [], 'departments' => []])
+@props(['role', 'storeUrl', 'updateUrl', 'plantOptions' => [], 'departments' => [], 'multipleDepartments' => false])
 @php
     $bag = $errors->account;
     $labelClass = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400';
+    // form.departments is always a list; with a single department only its first item is used
     $old = $bag->any() ? [
         'id' => old('_id') ? (int) old('_id') : null,
         'name' => old('name', ''),
         'email' => old('email', ''),
         'pabrik' => old('pabrik', ''),
-        'departemen' => old('departemen', ''),
+        'departments' => array_values(array_filter((array) old('departemen', []))),
     ] : null;
 @endphp
 <div
@@ -20,20 +21,27 @@
         storeUrl: @js($storeUrl),
         updateUrl: @js($updateUrl),
         departments: @js($departments),
-        form: { id: null, name: '', email: '', pabrik: '', departemen: '' },
+        form: { id: null, name: '', email: '', pabrik: '', departments: [] },
         submitting: false,
         fill(row) {
             this.form = row
-                ? { id: row.id, name: row.name, email: row.email, pabrik: row.pabrik ?? '', departemen: row.departemen ?? '' }
-                : { id: null, name: '', email: '', pabrik: '', departemen: '' };
+                ? { id: row.id, name: row.name, email: row.email, pabrik: row.pabrik ?? '', departments: [...(row.departments ?? [])] }
+                : { id: null, name: '', email: '', pabrik: '', departments: [] };
             this.submitting = false;
+        },
+        get department() {
+            return this.form.departments[0] ?? '';
+        },
+        set department(code) {
+            this.form.departments = code ? [code] : [];
         },
         get departmentOptions() {
             return Object.entries(this.departments[this.form.pabrik] ?? {});
         },
         changePlant() {
             // department codes differ per plant
-            if (!this.departmentOptions.some(([code]) => code === this.form.departemen)) this.form.departemen = '';
+            const codes = this.departmentOptions.map(([code]) => code);
+            this.form.departments = this.form.departments.filter((code) => codes.includes(code));
         },
         get action() {
             return this.form.id ? this.updateUrl.replace(':id', this.form.id) : this.storeUrl;
@@ -84,18 +92,45 @@
                         @error('pabrik', 'account') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                     </div>
 
-                    <div>
-                        <label for="account-department" class="{{ $labelClass }}">{{ __('account.form.department') }}</label>
-                        <x-ui.native-select id="account-department" name="departemen" x-model="form.departemen" x-bind:disabled="!form.pabrik" required
-                            :aria-invalid="$bag->has('departemen') ? 'true' : null">
-                            <option value="" x-text="form.pabrik ? @js(__('account.form.selectDepartment')) : @js(__('account.form.selectPlantFirst'))">{{ __('account.form.selectDepartment') }}</option>
-                            <template x-for="[code, name] in departmentOptions" :key="code">
-                                <option x-bind:value="code" x-text="name" x-bind:selected="code === form.departemen"></option>
-                            </template>
-                        </x-ui.native-select>
-                        @error('departemen', 'account') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
-                    </div>
+                    @unless ($multipleDepartments)
+                        <div>
+                            <label for="account-department" class="{{ $labelClass }}">{{ __('account.form.department') }}</label>
+                            <x-ui.native-select id="account-department" name="departemen" x-model="department" x-bind:disabled="!form.pabrik" required
+                                :aria-invalid="$bag->has('departemen') ? 'true' : null">
+                                <option value="" x-text="form.pabrik ? @js(__('account.form.selectDepartment')) : @js(__('account.form.selectPlantFirst'))">{{ __('account.form.selectDepartment') }}</option>
+                                <template x-for="[code, name] in departmentOptions" :key="code">
+                                    <option x-bind:value="code" x-text="name" x-bind:selected="code === department"></option>
+                                </template>
+                            </x-ui.native-select>
+                            @error('departemen', 'account') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
+                        </div>
+                    @endunless
                 </div>
+
+                @if ($multipleDepartments)
+                    <fieldset>
+                        <legend class="{{ $labelClass }}">
+                            {{ __('account.form.departments') }}
+                            <span class="font-normal text-gray-400 dark:text-gray-500" x-show="form.departments.length" x-text="'(' + form.departments.length + ')'"></span>
+                        </legend>
+                        <p x-show="!form.pabrik" class="rounded-lg border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            {{ __('account.form.selectPlantFirst') }}
+                        </p>
+                        <div x-show="form.pabrik" class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <template x-for="[code, name] in departmentOptions" :key="code">
+                                <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 has-checked:border-brand-300 has-checked:bg-brand-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-white/3 dark:has-checked:border-brand-500/40 dark:has-checked:bg-brand-500/10">
+                                    <input type="checkbox" name="departemen[]" x-bind:value="code" x-model="form.departments"
+                                        class="size-4 shrink-0 cursor-pointer rounded border-gray-300 accent-brand-500 dark:border-gray-700">
+                                    <span x-text="name"></span>
+                                </label>
+                            </template>
+                        </div>
+                        <p class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{{ __('account.form.departmentsHint') }}</p>
+                        @if ($bag->has('departemen') || $bag->has('departemen.*'))
+                            <x-ui.field.error class="mt-1.5">{{ $bag->first('departemen') ?: $bag->first('departemen.*') }}</x-ui.field.error>
+                        @endif
+                    </fieldset>
+                @endif
 
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>

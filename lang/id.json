@@ -76,11 +76,11 @@
     "nc.create.chooseDepartment": "Pilih departemen",
     "nc.create.chooseCategory": "Pilih kategori",
     "nc.create.choosePic": "Pilih PIC auditee",
-    "nc.create.noAuditee": "Belum ada auditee untuk pabrik ini",
+    "nc.create.noAuditee": "Belum ada auditee untuk pabrik/departemen ini",
     "nc.create.clausePlaceholder": "mis. 1.1.1",
     "nc.create.findingPlaceholder": "Jelaskan temuan audit...",
     "nc.create.optional": "opsional",
-    "nc.create.photoHint": "JPG, PNG, atau GIF, maksimal 5 MB.",
+    "nc.create.photoHint": "JPG, PNG, atau GIF, maksimal 10 MB. Foto otomatis diperkecil saat disimpan.",
     "nc.create.cancel": "Batal",
     "nc.create.save": "Simpan",
     "nc.columns.id": "ID",
@@ -204,7 +204,7 @@
     "account.import.shortPassword": "Baris :row: password minimal :min karakter.",
     "meta.auditees.title": "Auditee | SMK3 Monitoring",
     "meta.auditees.description": "Daftar akun auditee SMK3.",
-    "account.auditeeDescription": "Akun auditee adalah PIC yang menindaklanjuti temuan di departemennya. Auditor hanya melihat akun di pabrik yang sama.",
+    "account.auditeeDescription": "Akun auditee adalah PIC yang menindaklanjuti temuan. Satu auditee bisa memegang beberapa departemen dan hanya melihat temuan di departemen tersebut. Auditor hanya melihat akun di pabrik yang sama.",
     "account.inUse": "Akun :name tidak bisa dihapus karena menjadi PIC di :count temuan.",
     "account.showing": "Menampilkan :from–:to dari :total akun",
     "clause.tabsLabel": "Elemen SMK3",
@@ -214,5 +214,9 @@
     "clause.noChanges": "Belum ada perubahan kategori.",
     "clause.discard": "Batalkan",
     "clause.saveChanges": "Simpan perubahan",
-    "clause.categoriesSaved": "Kategori :count klausul berhasil disimpan."
+    "clause.categoriesSaved": "Kategori :count klausul berhasil disimpan.",
+    "account.form.departments": "Departemen",
+    "account.form.departmentsHint": "Pilih satu atau lebih. Auditee hanya melihat temuan di departemen yang dipilih.",
+    "account.template.departmentsNote": "Boleh lebih dari satu departemen, pisahkan dengan koma. Contoh: OIL, BMB. Daftar kodenya ada di sheet Referensi.",
+    "nc.create.picOutsideDepartment": "PIC harus auditee dari pabrik dan departemen temuan ini."
 }

@@ -9,5 +9,6 @@
         :plants="$plants"
         :plant-options="$plantOptions"
         :departments="$departments"
-        :summary="$summary" />
+        :summary="$summary"
+        :multiple-departments="$multipleDepartments" />
 @endsection
