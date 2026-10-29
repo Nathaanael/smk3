@@ -55,4 +55,23 @@ class User extends Authenticatable
     {
         return $this->otorisasi === Role::Admin;
     }
+
+    /**
+     * Plant codes this user may see. Admins see every plant; everyone else is
+     * limited to users.pabrik, which may list several codes ("ckp,ing").
+     *
+     * @return list<string>
+     */
+    public function accessiblePlants(): array
+    {
+        $plants = array_keys(config('smk3.plants'));
+
+        if ($this->isAdmin()) {
+            return $plants;
+        }
+
+        $own = array_map('trim', explode(',', (string) $this->pabrik));
+
+        return array_values(array_intersect($plants, $own));
+    }
 }

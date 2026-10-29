@@ -6,6 +6,14 @@ return [
         'title' => 'meta.dashboard.title',
         'description' => 'meta.dashboard.description',
     ],
+    '/non-conformities' => [
+        'title' => 'meta.nonConformities.title',
+        'description' => 'meta.nonConformities.description',
+    ],
+    '/progress-monitoring' => [
+        'title' => 'meta.progressMonitoring.title',
+        'description' => 'meta.progressMonitoring.description',
+    ],
     '/login' => [
         'title' => 'meta.login.title',
         'description' => 'meta.login.description',

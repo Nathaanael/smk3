@@ -47,6 +47,16 @@ return [
             'report' => false,
         ],
 
+        // public/uploads, same location the legacy system wrote photos to
+        'uploads' => [
+            'driver' => 'local',
+            'root' => public_path('uploads'),
+            'url' => '/uploads',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

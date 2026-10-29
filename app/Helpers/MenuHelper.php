@@ -2,21 +2,47 @@
 
 namespace App\Helpers;
 
+use App\Enums\Role;
+
 class MenuHelper
 {
     public static function getMainNavItems()
     {
-        if (! auth()->user()?->isAdmin()) {
-            return [];
-        }
+        $items = [];
 
-        return [
-            [
+        if (auth()->user()?->isAdmin()) {
+            $items[] = [
                 'icon' => 'dashboard',
                 'name' => 'Dashboard',
                 'path' => '/admin/dashboard',
-            ],
+            ];
+        }
+
+        $items[] = [
+            'icon' => 'charts',
+            'name' => 'smk3.progressMonitoring',
+            'path' => '/progress-monitoring',
         ];
+        $items[] = [
+            'icon' => 'task',
+            'name' => 'smk3.nonConformities',
+            'path' => '/non-conformities',
+        ];
+
+        // master data: admin and auditor only (same as the legacy system)
+        if (in_array(auth()->user()?->otorisasi, [Role::Admin, Role::Auditor], true)) {
+            $items[] = [
+                'icon' => 'tables',
+                'name' => 'master.title',
+                'subItems' => [
+                    ['name' => 'master.auditee', 'path' => '/master/auditee'],
+                    ['name' => 'master.auditor', 'path' => '/master/auditor'],
+                    ['name' => 'master.clauses', 'path' => '/master/clauses'],
+                ],
+            ];
+        }
+
+        return $items;
     }
 
     public static function getMenuGroups()

@@ -2,13 +2,17 @@ import { createPopper } from "@popperjs/core";
 import Alpine from "alpinejs";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
+import { Indonesian } from "flatpickr/dist/l10n/id.js";
 import "./bootstrap";
 import initCharts from "./components/chart";
+import nonConformityList from "./components/non-conformities/list";
 import registerUi from "./ui";
 
 window.Alpine = Alpine;
 window.createPopper = createPopper;
 window.flatpickr = flatpickr;
+// pickers follow the page language (<html lang>)
+if (document.documentElement.lang === "id") flatpickr.localize(Indonesian);
 
 // Register Alpine.js components before initializing
 Alpine.data("dropdown", () => ({
@@ -55,6 +59,7 @@ Alpine.data("dropdown", () => ({
 }));
 
 registerUi(Alpine);
+Alpine.data("nonConformityList", nonConformityList);
 
 Alpine.start();
 
