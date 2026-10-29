@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\Master\AuditeeController;
+use App\Http\Controllers\Master\AuditorController;
 use App\Http\Controllers\Master\ClauseController;
 use App\Http\Controllers\NonConfirmities\NonConfirmitiesController;
 use Illuminate\Support\Facades\Route;
@@ -44,7 +46,21 @@ Route::middleware('auth')->group(function () {
         Route::post('/clauses/import', [ClauseController::class, 'import'])->name('clauses.import');
         Route::put('/clauses/{criterion}', [ClauseController::class, 'update'])->name('clauses.update');
         Route::delete('/clauses/{criterion}', [ClauseController::class, 'destroy'])->name('clauses.destroy');
-        Route::patch('/clauses/{criterion}/category', [ClauseController::class, 'toggleCategory'])->name('clauses.category');
+        Route::patch('/clauses/categories', [ClauseController::class, 'saveCategories'])->name('clauses.categories');
+
+        Route::get('/auditor', [AuditorController::class, 'index'])->name('auditors');
+        Route::post('/auditor', [AuditorController::class, 'store'])->name('auditors.store');
+        Route::get('/auditor/template', [AuditorController::class, 'template'])->name('auditors.template');
+        Route::post('/auditor/import', [AuditorController::class, 'import'])->name('auditors.import');
+        Route::put('/auditor/{account}', [AuditorController::class, 'update'])->name('auditors.update');
+        Route::delete('/auditor/{account}', [AuditorController::class, 'destroy'])->name('auditors.destroy');
+
+        Route::get('/auditee', [AuditeeController::class, 'index'])->name('auditees');
+        Route::post('/auditee', [AuditeeController::class, 'store'])->name('auditees.store');
+        Route::get('/auditee/template', [AuditeeController::class, 'template'])->name('auditees.template');
+        Route::post('/auditee/import', [AuditeeController::class, 'import'])->name('auditees.import');
+        Route::put('/auditee/{account}', [AuditeeController::class, 'update'])->name('auditees.update');
+        Route::delete('/auditee/{account}', [AuditeeController::class, 'destroy'])->name('auditees.destroy');
     });
 
     // admin pages

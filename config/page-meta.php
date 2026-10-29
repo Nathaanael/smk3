@@ -6,6 +6,14 @@ return [
         'title' => 'meta.dashboard.title',
         'description' => 'meta.dashboard.description',
     ],
+    '/master/auditee' => [
+        'title' => 'meta.auditees.title',
+        'description' => 'meta.auditees.description',
+    ],
+    '/master/auditor' => [
+        'title' => 'meta.auditors.title',
+        'description' => 'meta.auditors.description',
+    ],
     '/master/clauses' => [
         'title' => 'meta.clauses.title',
         'description' => 'meta.clauses.description',

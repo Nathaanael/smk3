@@ -70,8 +70,57 @@ class User extends Authenticatable
             return $plants;
         }
 
-        $own = array_map('trim', explode(',', (string) $this->pabrik));
+        return array_values(array_intersect($plants, $this->plantCodes()));
+    }
 
-        return array_values(array_intersect($plants, $own));
+    /**
+     * Plant codes stored in users.pabrik ("ckp,ing" -> ['ckp', 'ing']).
+     *
+     * @return list<string>
+     */
+    public function plantCodes(): array
+    {
+        return self::splitPlants($this->pabrik);
+    }
+
+    public function plantLabel(): string
+    {
+        return strtoupper(implode(' + ', $this->plantCodes())) ?: '-';
+    }
+
+    public function departmentName(): ?string
+    {
+        return self::departmentsForPlant($this->pabrik)[$this->departemen] ?? $this->departemen;
+    }
+
+    /**
+     * Values users.pabrik may hold: single plants plus multi-plant groups.
+     *
+     * @return array<string, string>
+     */
+    public static function plantOptions(): array
+    {
+        return config('smk3.plants') + config('smk3.plant_groups');
+    }
+
+    /**
+     * Departments available for a users.pabrik value; a multi-plant value gets the
+     * departments of each of its plants.
+     *
+     * @return array<string, string>
+     */
+    public static function departmentsForPlant(?string $pabrik): array
+    {
+        $codes = self::splitPlants($pabrik);
+
+        return array_merge(...array_map(fn (string $code) => NonConformity::departmentsFor($code), $codes ?: [null]));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function splitPlants(?string $pabrik): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', (string) $pabrik))));
     }
 }

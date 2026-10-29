@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
@@ -43,6 +44,31 @@ class Smk3Criterion extends Model
         return static::all()->sortBy('no_kriteria', SORT_NATURAL)->values();
     }
 
+    /** Criteria of one SMK3 element (clause numbers starting with "<element>."). */
+    public function scopeInElement(Builder $query, int $element): void
+    {
+        $query->where('no_kriteria', 'like', "{$element}.%");
+    }
+
+    public function scopeSearch(Builder $query, ?string $term): void
+    {
+        $query->when($term, fn (Builder $query) => $query->where(function (Builder $query) use ($term) {
+            $query->where('no_kriteria', 'like', "%{$term}%")->orWhere('kriteria', 'like', "%{$term}%");
+        }));
+    }
+
+    /**
+     * Number of criteria per element, optionally only those matching a search.
+     *
+     * @return array<int, int>
+     */
+    public static function countPerElement(?string $term = null): array
+    {
+        return static::query()->search($term)->pluck('no_kriteria')
+            ->countBy(fn (string $number) => (int) strtok($number, '.'))
+            ->all();
+    }
+
     /** SMK3 element number, taken from the first part of the clause number. */
     public function element(): int
     {
@@ -70,14 +96,15 @@ class Smk3Criterion extends Model
      */
     public static function summary(): array
     {
-        $row = static::query()
+        // toBase(): the model would cast the sums back to booleans (166 -> true -> 1)
+        $row = static::query()->toBase()
             ->selectRaw('count(*) as total')
             ->selectRaw('sum(case when minor then 1 else 0 end) as minor')
             ->selectRaw('sum(case when major then 1 else 0 end) as major')
             ->selectRaw('sum(case when kritis then 1 else 0 end) as kritis')
             ->first();
 
-        return array_map('intval', $row->only(['total', 'minor', 'major', 'kritis']));
+        return array_map('intval', (array) $row);
     }
 
     /** How many findings refer to this criterion. */

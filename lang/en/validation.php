@@ -15,5 +15,6 @@ return [
         'kriteria' => 'criterion',
         'dari' => 'start date',
         'sampai' => 'end date',
+        'name' => 'name',
     ],
 ];

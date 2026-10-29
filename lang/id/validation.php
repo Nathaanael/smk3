@@ -18,6 +18,10 @@ return [
         'file' => ':Attribute maksimal :max kilobyte.',
         'string' => ':Attribute maksimal :max karakter.',
     ],
+    'min' => [
+        'string' => ':Attribute minimal :min karakter.',
+    ],
+    'confirmed' => 'Konfirmasi :attribute tidak cocok.',
     'required' => ':Attribute wajib diisi.',
     'string' => ':Attribute harus berupa teks.',
 
@@ -35,5 +39,8 @@ return [
         'file' => 'file',
         'dari' => 'tanggal awal',
         'sampai' => 'tanggal akhir',
+        'name' => 'nama',
+        'email' => 'email',
+        'password' => 'password',
     ],
 ];

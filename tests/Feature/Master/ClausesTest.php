@@ -39,7 +39,7 @@ function auditor(): User
     return User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']);
 }
 
-test('the page lists criteria grouped per element, in clause number order', function () {
+test('the page shows only the first element tab, in clause number order', function () {
     criterion(['no_kriteria' => '1.10.1', 'kriteria' => 'Kriteria sepuluh']);
     criterion(['no_kriteria' => '1.2.1', 'kriteria' => 'Kriteria dua']);
     criterion(['no_kriteria' => '6.7.2', 'kriteria' => 'Keadaan darurat']);
@@ -47,8 +47,34 @@ test('the page lists criteria grouped per element, in clause number order', func
     $this->actingAs(auditor())
         ->get('/master/clauses')
         ->assertOk()
-        ->assertSeeInOrder(['Kriteria dua', 'Kriteria sepuluh', 'Keadaan darurat'])
-        ->assertSee('Keamanan Bekerja Berdasarkan SMK3');
+        ->assertSeeInOrder(['Kriteria dua', 'Kriteria sepuluh'])
+        ->assertDontSee('Keadaan darurat');
+});
+
+test('another element tab is loaded as a fragment', function () {
+    criterion(['no_kriteria' => '1.1.1', 'kriteria' => 'Kriteria satu']);
+    criterion(['no_kriteria' => '6.7.2', 'kriteria' => 'Keadaan darurat']);
+
+    $response = $this->actingAs(auditor())
+        ->get('/master/clauses?element=6', ['X-Partial' => 'results'])
+        ->assertOk();
+
+    expect($response->getContent())
+        ->toContain('Keadaan darurat')
+        ->toContain('Keamanan Bekerja Berdasarkan SMK3')
+        ->not->toContain('Kriteria satu')
+        ->not->toContain('<html');
+});
+
+test('searching jumps to the first element with a match', function () {
+    criterion(['no_kriteria' => '1.1.1', 'kriteria' => 'Kebijakan K3']);
+    criterion(['no_kriteria' => '6.7.2', 'kriteria' => 'Keadaan darurat']);
+
+    $this->actingAs(auditor())
+        ->get('/master/clauses?element=1&q=darurat')
+        ->assertOk()
+        ->assertSee('Keadaan darurat')
+        ->assertDontSee('Kebijakan K3');
 });
 
 test('auditees cannot open the clause master', function () {
@@ -57,30 +83,58 @@ test('auditees cannot open the clause master', function () {
         ->assertForbidden();
 });
 
-test('a category checkbox is saved over ajax', function () {
-    $criterion = criterion();
+test('changed category checkboxes are saved together', function () {
+    $first = criterion(['no_kriteria' => '1.1.1', 'minor' => true, 'major' => true, 'kritis' => false]);
+    $second = criterion(['no_kriteria' => '1.1.2', 'minor' => true, 'major' => true, 'kritis' => false]);
 
     $this->actingAs(auditor())
-        ->patchJson("/master/clauses/{$criterion->id}/category", ['category' => 'kritis', 'checked' => true])
+        ->patchJson('/master/clauses/categories', ['changes' => [
+            ['id' => $first->id, 'minor' => true, 'major' => true, 'kritis' => true],
+            ['id' => $second->id, 'minor' => false, 'major' => true, 'kritis' => false],
+        ]])
         ->assertOk()
-        ->assertJsonPath('criterion.kritis', true)
-        ->assertJsonPath('summary.kritis', 1);
+        ->assertJsonPath('message', __('clause.categoriesSaved', ['count' => 2]))
+        ->assertJsonPath('summary.kritis', 1)
+        ->assertJsonPath('summary.minor', 1);
 
-    expect($criterion->fresh()->kritis)->toBeTrue();
+    expect($first->fresh()->kritis)->toBeTrue()
+        ->and($second->fresh()->minor)->toBeFalse();
 });
 
-test('only known categories can be toggled', function () {
+test('nothing is saved when one change is invalid', function () {
+    $criterion = criterion(['kritis' => false]);
+
+    $this->actingAs(auditor())
+        ->patchJson('/master/clauses/categories', ['changes' => [
+            ['id' => $criterion->id, 'minor' => true, 'major' => true, 'kritis' => true],
+            ['id' => 999, 'minor' => true, 'major' => true, 'kritis' => true],
+        ]])
+        ->assertUnprocessable();
+
+    expect($criterion->fresh()->kritis)->toBeFalse();
+});
+
+test('the summary counts every criterion per category', function () {
+    criterion(['no_kriteria' => '1.1.1', 'minor' => true, 'major' => true, 'kritis' => false]);
+    criterion(['no_kriteria' => '1.1.2', 'minor' => true, 'major' => true, 'kritis' => true]);
+    criterion(['no_kriteria' => '1.1.3', 'minor' => true, 'major' => false, 'kritis' => false]);
+
+    expect(Smk3Criterion::summary())->toBe(['total' => 3, 'minor' => 3, 'major' => 2, 'kritis' => 1]);
+});
+
+test('every category value must be given as true or false', function () {
     $criterion = criterion();
 
     $this->actingAs(auditor())
-        ->patchJson("/master/clauses/{$criterion->id}/category", ['category' => 'kriteria', 'checked' => true])
-        ->assertUnprocessable();
+        ->patchJson('/master/clauses/categories', ['changes' => [['id' => $criterion->id, 'minor' => 'mungkin', 'major' => true]]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['changes.0.minor', 'changes.0.kritis']);
 });
 
 test('a clause can be added manually', function () {
     $this->actingAs(auditor())
         ->post('/master/clauses', ['no_kriteria' => '12.6.1', 'kriteria' => 'Kriteria baru', 'minor' => '1', 'major' => '0', 'kritis' => '1'])
-        ->assertRedirect('/master/clauses')
+        ->assertRedirect('/master/clauses?element=12')
         ->assertSessionHas('success');
 
     $criterion = Smk3Criterion::where('no_kriteria', '12.6.1')->sole();
@@ -101,7 +155,7 @@ test('renumbering a clause carries its findings along', function () {
 
     $this->actingAs(auditor())
         ->put("/master/clauses/{$criterion->id}", ['no_kriteria' => '6.7.3', 'kriteria' => 'Diubah', 'minor' => '1'])
-        ->assertRedirect('/master/clauses');
+        ->assertRedirect('/master/clauses?element=6');
 
     expect($criterion->fresh()->no_kriteria)->toBe('6.7.3')
         ->and($finding->fresh()->no_klausul)->toBe('6.7.3');

@@ -41,7 +41,15 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+const ACCOUNT_HEADERS = ['Nama', 'Email', 'Password', 'Departemen', 'Pabrik'];
+
+/** Build an .xlsx upload from rows (first row = header) for the account master tests. */
+function accountWorkbook(array $rows): Illuminate\Http\UploadedFile
 {
-    // ..
+    $spreadsheet = new PhpOffice\PhpSpreadsheet\Spreadsheet;
+    $spreadsheet->getActiveSheet()->fromArray($rows, null, 'A1', true);
+    $path = tempnam(sys_get_temp_dir(), 'accounts').'.xlsx';
+    PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx')->save($path);
+
+    return new Illuminate\Http\UploadedFile($path, 'accounts.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
 }

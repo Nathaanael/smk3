@@ -15,6 +15,11 @@ return [
         'smg' => 'Semarang (SMG)',
     ],
 
+    // Extra users.pabrik values that grant several plants at once.
+    'plant_groups' => [
+        'ckp,ing' => 'CKP + ING (Multi-pabrik)',
+    ],
+
     // Departments per plant; plants without their own list use "default".
     'departments' => [
         'default' => [

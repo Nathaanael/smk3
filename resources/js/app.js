@@ -7,6 +7,7 @@ import "./bootstrap";
 import initCharts from "./components/chart";
 import nonConformityList from "./components/non-conformities/list";
 import clauseMaster from "./components/master/clauses";
+import accountMaster from "./components/master/accounts";
 import registerUi from "./ui";
 
 window.Alpine = Alpine;
@@ -62,6 +63,7 @@ Alpine.data("dropdown", () => ({
 registerUi(Alpine);
 Alpine.data("nonConformityList", nonConformityList);
 Alpine.data("clauseMaster", clauseMaster);
+Alpine.data("accountMaster", accountMaster);
 
 Alpine.start();
 
