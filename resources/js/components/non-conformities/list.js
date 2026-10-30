@@ -17,6 +17,7 @@ import { downloadFile } from '../../lib/download';
 const FILTER_KEYS = ['pabrik', 'departemen', 'kategori', 'status', 'dari', 'sampai'];
 
 const EXPORT_COLUMNS_KEY = 'nc.exportColumns';
+const EXPORT_PROGRESS_KEY = 'nc.exportProgress';
 
 export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUrl = null, photoUrl = null, exportUrl = null, exportColumns = [] }) => ({
     url,
@@ -25,6 +26,8 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
     exportColumnList: exportColumns,
     exportKeys: rememberedColumns(exportColumns),
     exportSelectedOnly: false,
+    // also export the Progress Monitoring SMK3 recap (remembered per browser, on by default)
+    exportProgress: rememberedFlag(EXPORT_PROGRESS_KEY, true),
     // format being prepared ('xlsx' / 'pdf'), shown in the loading toast
     exporting: null,
     exportController: null,
@@ -45,7 +48,8 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
     sampai: filters.sampai ?? '',
     perPage: filters.per_page ?? '',
     sort: filters.sort ?? '',
-    dir: filters.dir ?? '',
+    // a sorted list without a direction is ascending (as on the server)
+    dir: filters.sort ? filters.dir || 'asc' : '',
     page: Number(new URL(window.location.href).searchParams.get('page')) || 1,
     filterOpen: false,
     loading: false,
@@ -227,7 +231,15 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
         }
     },
 
-    /** Download link: current search / filters, the ticked columns and optionally the ticked rows. */
+    rememberExportProgress() {
+        try {
+            window.localStorage.setItem(EXPORT_PROGRESS_KEY, JSON.stringify(this.exportProgress));
+        } catch (error) {
+            // storage blocked (private window): the choice just is not remembered
+        }
+    },
+
+    /** Download link: current search / filters, the ticked columns, optionally the ticked rows and the recap. */
     exportHref(format) {
         const params = new URLSearchParams(this.query());
         params.delete('page');
@@ -235,6 +247,7 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
         params.set('format', format);
         this.exportKeys.forEach((key) => params.append('columns[]', key));
         if (this.exportSelectedOnly) this.selected.forEach((id) => params.append('ids[]', id));
+        if (this.exportProgress) params.set('progress', '1');
         return `${exportUrl}?${params}`;
     },
 
@@ -299,4 +312,15 @@ function rememberedColumns(columns) {
         // unreadable or blocked storage: fall back to the defaults
     }
     return columns.filter((column) => column.default).map((column) => column.key);
+}
+
+/** A yes / no choice saved in this browser, else the default. */
+function rememberedFlag(key, fallback) {
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(key) ?? 'null');
+        if (typeof saved === 'boolean') return saved;
+    } catch (error) {
+        // unreadable or blocked storage: fall back to the default
+    }
+    return fallback;
 }

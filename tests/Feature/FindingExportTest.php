@@ -151,3 +151,46 @@ test('the list offers the export menus with the column choices', function () {
         ->assertSee(__('nc.export.chooseColumns'))
         ->assertSee(__('nc.export.picName'));
 });
+
+test('excel puts the progress monitoring recap on its own sheet before the findings list', function () {
+    NonConformity::factory()->closed()->create(['pabrik' => 'ckp', 'departemen' => 'OIL', 'kategori' => 'Minor', 'no_klausul' => '6.1.1', 'tanggal' => '2026-03-10']);
+    NonConformity::factory()->open()->create(['pabrik' => 'ckp', 'departemen' => 'OIL', 'kategori' => 'Minor', 'no_klausul' => '6.1.2', 'tanggal' => '2026-03-12']);
+    NonConformity::factory()->open()->create(['pabrik' => 'ckp', 'departemen' => 'OIL', 'kategori' => 'Minor', 'tanggal' => '2025-01-01']);
+
+    $workbook = exportedWorkbook($this->actingAs($this->auditor)
+        ->get('/non-conformities/export?'.http_build_query(['format' => 'xlsx', 'columns' => ['id'], 'progress' => 1, 'dari' => '2026-03-01', 'sampai' => '2026-03-31'])));
+
+    expect($workbook->getSheetCount())->toBe(3)
+        ->and($workbook->getSheet(1)->getTitle())->toBe(mb_substr(__('smk3.progressMonitoring'), 0, 31))
+        ->and($workbook->getSheet(2)->getTitle())->toBe(mb_substr(__('nc.report.listTitle'), 0, 31));
+
+    $rows = $workbook->getSheet(1)->toArray(null, true, false, false);
+    expect($rows[0][0])->toContain('Cikampek')
+        ->and($rows[2][2])->toBe(__('pm.columns.total'));
+    // OIL is the first department: 2 findings of March, 1 closed, 2 Minor, no penalty
+    expect(array_slice($rows[3], 0, 7))->toEqual([1, 'Produksi Minyak', 2, 1, 1, 50, 2]);
+});
+
+test('without the progress option the excel has no progress monitoring sheet', function () {
+    NonConformity::factory()->create(['pabrik' => 'ckp']);
+
+    $workbook = exportedWorkbook($this->actingAs($this->auditor)
+        ->get('/non-conformities/export?'.http_build_query(['format' => 'xlsx', 'columns' => ['id']])));
+
+    expect($workbook->getSheetCount())->toBe(2);
+});
+
+test('the pdf can include the progress monitoring recap', function () {
+    NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'OIL']);
+
+    $this->actingAs($this->auditor)
+        ->get('/non-conformities/export?'.http_build_query(['format' => 'pdf', 'columns' => ['id'], 'progress' => 1]))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+test('the export menu offers the progress monitoring option', function () {
+    $this->actingAs($this->auditor)
+        ->get('/non-conformities')
+        ->assertSee(__('nc.export.includeProgress'));
+});

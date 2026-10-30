@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\FindingFilterRequest;
 use App\Models\NonConformity;
 use App\Services\FindingExporter;
+use App\Services\ProgressMonitor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -14,11 +15,12 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Download of the findings list as Excel or PDF: the current search / filters, optionally only
- * the ticked rows, with the columns ticked in the export menu.
+ * the ticked rows, with the columns ticked in the export menu. With "progress" the Progress
+ * Monitoring SMK3 recap of the filtered plant(s) and period is included too.
  */
 class FindingExportController extends Controller
 {
-    public function __invoke(FindingFilterRequest $request, FindingExporter $exporter): Response|RedirectResponse
+    public function __invoke(FindingFilterRequest $request, FindingExporter $exporter, ProgressMonitor $monitor): Response|RedirectResponse
     {
         $options = $request->validate([
             'format' => ['required', Rule::in(['xlsx', 'pdf'])],
@@ -26,6 +28,7 @@ class FindingExportController extends Controller
             'columns.*' => [Rule::in(FindingExporter::keys())],
             'ids' => ['nullable', 'array'],
             'ids.*' => ['integer'],
+            'progress' => ['nullable', 'boolean'],
         ]);
 
         $query = $request->findings()->when($options['ids'] ?? null, fn ($query, $ids) => $query->whereKey($ids));
@@ -46,19 +49,49 @@ class FindingExportController extends Controller
         $findings = $query->get();
         $filename = 'laporan-smk3-'.now(config('smk3.report.timezone'))->format('Ymd-Hi');
         $totalLabel = $this->totalLabel($request, $findings->pluck('pabrik')->unique()->values()->all());
+        $progress = $request->boolean('progress') ? $this->progress($request, $monitor) : [];
 
         if ($options['format'] === 'pdf') {
-            return $exporter->pdf($findings, $options['columns'], $totalLabel, $this->describeFilters($request, (bool) ($options['ids'] ?? null)))
+            return $exporter->pdf($findings, $options['columns'], $totalLabel, $this->describeFilters($request, (bool) ($options['ids'] ?? null)), $progress)
                 ->download("{$filename}.pdf");
         }
 
-        $workbook = $exporter->excel($findings, $options['columns'], $totalLabel);
+        $workbook = $exporter->excel($findings, $options['columns'], $totalLabel, $progress);
 
         return response()->streamDownload(function () use ($workbook) {
             IOFactory::createWriter($workbook, 'Xlsx')->save('php://output');
         }, "{$filename}.xlsx", [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
+    }
+
+    /**
+     * Progress Monitoring recap of the filtered plant, or of every plant the user may see, over
+     * the filtered dates (all dates when none is set). Other list filters do not apply: the recap
+     * always counts every finding of a department.
+     *
+     * @return list<array{plant: string, period: string, recap: array<string, mixed>}>
+     */
+    private function progress(FindingFilterRequest $request, ProgressMonitor $monitor): array
+    {
+        $filters = $request->validated();
+        $plants = isset($filters['pabrik']) ? [$filters['pabrik']] : $request->user()->accessiblePlants();
+        $from = $filters['dari'] ?? null;
+        $to = $filters['sampai'] ?? null;
+        $date = fn (string $value) => Carbon::parse($value)->translatedFormat('d M Y');
+
+        $period = match (true) {
+            $from && $to => __('pm.period', ['from' => $date($from), 'to' => $date($to)]),
+            (bool) $from => __('pm.since', ['date' => $date($from)]),
+            (bool) $to => __('pm.until', ['date' => $date($to)]),
+            default => __('pm.allDates'),
+        };
+
+        return array_map(fn (string $plant) => [
+            'plant' => config('smk3.plants')[$plant] ?? strtoupper($plant),
+            'period' => $period,
+            'recap' => $monitor->recap($plant, $from, $to),
+        ], $plants);
     }
 
     /**

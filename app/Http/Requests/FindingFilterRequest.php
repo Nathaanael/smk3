@@ -31,6 +31,21 @@ class FindingFilterRequest extends FormRequest
     ];
 
     /**
+     * An unknown order (old bookmark, edited URL) falls back to the default order instead of
+     * failing the whole list or export.
+     */
+    protected function prepareForValidation(): void
+    {
+        $sort = $this->input('sort');
+        if ($sort !== null && ! (is_string($sort) && array_key_exists($sort, self::SORTABLE))) {
+            $this->merge(['sort' => null, 'dir' => null]);
+        }
+        if (! in_array($this->input('dir'), [null, 'asc', 'desc'], true)) {
+            $this->merge(['dir' => null]);
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array

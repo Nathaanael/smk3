@@ -29,6 +29,14 @@
         table.status { width: 230px; border-collapse: collapse; }
         table.status th { background: #f1f5f9; text-align: left; padding: 4px 5px; border: 1px solid #d9dee5; }
         table.status td { padding: 3px 5px; border: 1px solid #e2e6eb; }
+        /* Progress Monitoring: centred numbers, Score / rating / ranking coloured like the page badges */
+        table.progress th, table.progress td { text-align: center; }
+        table.progress td.name { text-align: left; }
+        table.progress td.good { background: #dcfce7; }
+        table.progress td.fair { background: #fef3c7; }
+        table.progress td.poor { background: #fee2e2; }
+        .notes { margin-top: 8px; color: #374151; }
+        .notes p { margin: 0 0 3px; }
         .photo { max-width: 100px; max-height: 100px; }
         .nc td { height: 100px; }
         thead { display: table-header-group; }
@@ -99,6 +107,73 @@
         <tr><td>{{ __('nc.open') }}</td><td>{{ $summary['status']['open'] }}</td></tr>
         <tr><td>{{ __('nc.closed') }}</td><td>{{ $summary['status']['closed'] }}</td></tr>
     </table>
+
+    {{-- Progress Monitoring SMK3 (optional), one table per plant, above the findings list --}}
+    @foreach ($progress as $block)
+        <h2>{{ __('smk3.progressMonitoring') }} — {{ $block['plant'] }} · {{ $block['period'] }}</h2>
+        <table class="grid progress">
+            <thead>
+                <tr>
+                    <th rowspan="2">{{ __('pm.columns.no') }}</th>
+                    <th rowspan="2">{{ __('nc.columns.department') }}</th>
+                    <th colspan="4">{{ __('pm.groups.progress') }}</th>
+                    <th colspan="5">{{ __('pm.groups.deviation') }}</th>
+                    <th rowspan="2">{{ __('pm.columns.ranking') }}</th>
+                </tr>
+                <tr>
+                    <th>{{ __('pm.columns.total') }}</th>
+                    <th>{{ __('nc.closed') }}</th>
+                    <th>{{ __('nc.open') }}</th>
+                    <th>{{ __('pm.columns.closedPercent') }}</th>
+                    <th>Minor</th>
+                    <th>Major</th>
+                    <th>Kritis</th>
+                    <th>{{ __('pm.columns.score') }}</th>
+                    <th>{{ __('pm.columns.rating') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($block['recap']['rows'] as $row)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+                        <td class="name">{{ $row['name'] }}</td>
+                        <td>{{ $row['total'] }}</td>
+                        <td>{{ $row['closed'] }}</td>
+                        <td>{{ $row['open'] }}</td>
+                        <td>{{ $row['total'] ? number_format($row['closed_percent'], 2).'%' : '-' }}</td>
+                        <td>{{ $row['minor'] }}</td>
+                        <td>{{ $row['major'] }}@if ($row['converted_major']) (+{{ $row['converted_major'] }})@endif</td>
+                        <td>{{ $row['kritis'] }}</td>
+                        <td class="{{ $tone($row['score']) }}">{{ number_format($row['score'], 2) }}%</td>
+                        <td class="{{ $row['satisfactory'] ? 'good' : 'poor' }}">{{ $row['satisfactory'] ? __('pm.satisfactory') : __('pm.poor') }}</td>
+                        <td class="{{ $tone($row['ranking']) }}">{{ number_format($row['ranking'], 2) }}%</td>
+                    </tr>
+                @endforeach
+                @php $total = $block['recap']['total']; @endphp
+                <tr class="total">
+                    <td></td>
+                    <td class="name">{{ __('pm.total') }}</td>
+                    <td>{{ $total['total'] }}</td>
+                    <td>{{ $total['closed'] }}</td>
+                    <td>{{ $total['open'] }}</td>
+                    <td>{{ $total['total'] ? number_format($total['closed_percent'], 2).'%' : '-' }}</td>
+                    <td>{{ $total['minor'] }}</td>
+                    <td>{{ $total['major'] }}@if ($total['converted_major']) (+{{ $total['converted_major'] }})@endif</td>
+                    <td>{{ $total['kritis'] }}</td>
+                    <td colspan="3"></td>
+                </tr>
+            </tbody>
+        </table>
+    @endforeach
+
+    @if ($progressNotes)
+        <div class="notes">
+            <p><strong>{{ __('pm.export.notes') }}</strong></p>
+            @foreach ($progressNotes as $note)
+                <p>{{ $note }}</p>
+            @endforeach
+        </div>
+    @endif
 
     <h2>{{ __('nc.report.listTitle') }}</h2>
     <table @class(['grid nc', 'dense' => count($columns) > 11])>

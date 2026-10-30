@@ -277,8 +277,24 @@ test('the list can be sorted by a column in either direction', function () {
         ->assertSeeInOrder(['Temuan C', 'Temuan B', 'Temuan A']);
 });
 
-test('an unknown sort column is rejected', function () {
-    $this->actingAs(User::factory()->admin()->create())
-        ->get('/non-conformities?sort=foto_temuan')
-        ->assertSessionHasErrors('sort');
-});
+test('an unknown sort value falls back to a valid order instead of an error', function (string $query, array $order) {
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan lama', 'tanggal' => '2025-01-10', 'pabrik' => 'ckp']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan baru', 'tanggal' => '2026-01-10', 'pabrik' => 'ckp']);
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get('/non-conformities?'.$query)
+        ->assertOk()
+        ->assertSessionHasNoErrors()
+        ->assertSeeInOrder($order);
+
+    $this->actingAs($admin)
+        ->getJson('/non-conformities/export?format=xlsx&columns[]=id&'.$query)
+        ->assertOk();
+})->with([
+    // unknown column: the default order, newest first
+    'unknown column' => ['sort=foto_temuan&dir=desc', ['Temuan baru', 'Temuan lama']],
+    'array' => ['sort[]=id', ['Temuan baru', 'Temuan lama']],
+    // unknown direction: the column ascending
+    'unknown direction' => ['sort=tanggal&dir=sideways', ['Temuan lama', 'Temuan baru']],
+]);

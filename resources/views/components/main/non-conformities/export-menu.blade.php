@@ -37,6 +37,17 @@
             </template>
         </div>
 
+        {{-- extra Progress Monitoring SMK3 recap (Excel: own sheet; PDF: above the findings list) --}}
+        <div class="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
+            <label class="flex cursor-pointer items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input type="checkbox" class="{{ $checkboxClass }} mt-0.5" x-model="exportProgress" x-on:change="rememberExportProgress()">
+                <span class="flex flex-col gap-0.5">
+                    {{ __('nc.export.includeProgress') }}
+                    <span class="text-theme-xs text-gray-500 dark:text-gray-400">{{ __('nc.export.includeProgressHint') }}</span>
+                </span>
+            </label>
+        </div>
+
         <div class="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
                 x-bind:class="selected.length ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'">
