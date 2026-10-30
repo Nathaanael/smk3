@@ -20,7 +20,7 @@
     @endif
 
     @if ($canUpload)
-        <label class="{{ $square }} cursor-pointer has-focus-visible:ring-3 has-focus-visible:ring-brand-500/20" title="{{ $uploadLabel }}"
+        <label class="{{ $square }} relative cursor-pointer has-focus-visible:ring-3 has-focus-visible:ring-brand-500/20" title="{{ $uploadLabel }}"
             x-bind:class="uploading['{{ $key }}'] && 'pointer-events-none opacity-60'">
             <input type="file" accept="image/*" class="sr-only" aria-label="{{ $uploadLabel }} #{{ $findingId }}"
                 x-on:change="uploadPhoto({{ $findingId }}, '{{ $field }}', $event)">

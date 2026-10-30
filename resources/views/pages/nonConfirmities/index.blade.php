@@ -91,7 +91,8 @@
                 {{-- ids of this page, for "tick all"; runs again after every AJAX load --}}
                 <div hidden x-init="setPageIds(@js($findings->pluck('id')))"></div>
 
-                <x-main.non-conformities.table :findings="$findings" :show-plant="count($plants) > 1" :can-manage="$canManage" />
+                <x-main.non-conformities.table :findings="$findings" :show-plant="count($plants) > 1" :can-manage="$canManage"
+                    :sort="$filters['sort'] ?? null" :dir="$filters['dir'] ?? 'asc'" />
 
                 <div class="flex flex-col gap-4 border-t border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-gray-800">
                     <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">

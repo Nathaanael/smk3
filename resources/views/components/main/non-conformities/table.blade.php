@@ -1,8 +1,12 @@
 {{--
     Findings table. With canManage (admin, auditor) rows get a checkbox for bulk actions and an
-    edit / delete column; everyone who sees a row may upload its repair photo.
+    edit / delete column; everyone who sees a row may upload its repair photo. Column headers
+    sort the list (sort / dir: the current order, see FindingFilterRequest::SORTABLE).
+
+    Only the table scrolls (both ways, header stays on top). The wrapper is `relative` so the
+    absolutely positioned (sr-only) file inputs stay inside it instead of widening the page.
 --}}
-@props(['findings', 'showPlant' => false, 'canManage' => false])
+@props(['findings', 'showPlant' => false, 'canManage' => false, 'sort' => null, 'dir' => 'asc'])
 @php
     $headClass = 'px-4 py-3 text-start text-xs font-medium whitespace-nowrap text-gray-500 dark:text-gray-400';
     $cellClass = 'px-4 py-3 text-sm text-gray-700 dark:text-gray-400';
@@ -15,9 +19,9 @@
         default => 'gray',
     };
 @endphp
-<div {{ $attributes->merge(['class' => 'custom-scrollbar max-w-full overflow-x-auto']) }}>
+<div {{ $attributes->merge(['class' => 'custom-scrollbar relative max-h-[70vh] max-w-full overflow-auto']) }}>
     <table class="min-w-full">
-        <thead class="border-y border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-white/2">
+        <thead class="sticky top-0 z-1 border-y border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <tr>
                 @if ($canManage)
                     <th class="w-10 px-4 py-3">
@@ -26,19 +30,19 @@
                             x-on:change="toggleAll($event.target.checked)">
                     </th>
                 @endif
-                <th class="{{ $headClass }}">{{ __('nc.columns.id') }}</th>
-                <th class="{{ $headClass }}">{{ __('nc.columns.date') }}</th>
+                <x-main.non-conformities.sort-header column="id" :label="__('nc.columns.id')" :sort="$sort" :dir="$dir" />
+                <x-main.non-conformities.sort-header column="tanggal" :label="__('nc.columns.date')" :sort="$sort" :dir="$dir" />
                 @if ($showPlant)
-                    <th class="{{ $headClass }}">{{ __('nc.columns.plant') }}</th>
+                    <x-main.non-conformities.sort-header column="pabrik" :label="__('nc.columns.plant')" :sort="$sort" :dir="$dir" />
                 @endif
-                <th class="{{ $headClass }}">{{ __('nc.columns.department') }}</th>
-                <th class="{{ $headClass }} min-w-72">{{ __('nc.columns.finding') }}</th>
+                <x-main.non-conformities.sort-header column="departemen" :label="__('nc.columns.department')" :sort="$sort" :dir="$dir" />
+                <x-main.non-conformities.sort-header column="temuan" :label="__('nc.columns.finding')" :sort="$sort" :dir="$dir" class="min-w-72" />
                 <th class="{{ $headClass }}">{{ __('nc.columns.findingPhoto') }}</th>
-                <th class="{{ $headClass }}">{{ __('nc.columns.clause') }}</th>
-                <th class="{{ $headClass }}">{{ __('nc.columns.category') }}</th>
-                <th class="{{ $headClass }}">{{ __('nc.columns.pic') }}</th>
+                <x-main.non-conformities.sort-header column="klausul" :label="__('nc.columns.clause')" :sort="$sort" :dir="$dir" />
+                <x-main.non-conformities.sort-header column="kategori" :label="__('nc.columns.category')" :sort="$sort" :dir="$dir" />
+                <x-main.non-conformities.sort-header column="pic" :label="__('nc.columns.pic')" :sort="$sort" :dir="$dir" />
                 <th class="{{ $headClass }}">{{ __('nc.columns.repairPhoto') }}</th>
-                <th class="{{ $headClass }}">{{ __('nc.columns.status') }}</th>
+                <x-main.non-conformities.sort-header column="status" :label="__('nc.columns.status')" :sort="$sort" :dir="$dir" />
                 @if ($canManage)
                     <th class="{{ $headClass }} text-center">{{ __('clause.columns.actions') }}</th>
                 @endif

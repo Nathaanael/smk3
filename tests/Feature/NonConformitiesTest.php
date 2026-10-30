@@ -259,3 +259,26 @@ test('the filter panel shows how many filters are active', function () {
         ->assertOk()
         ->assertSee(__('nc.filter'));
 });
+
+test('the list can be sorted by a column in either direction', function () {
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan B', 'no_klausul' => '2.1.1', 'pabrik' => 'ckp']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan A', 'no_klausul' => '1.1.1', 'pabrik' => 'ckp']);
+    NonConformity::factory()->create(['deskripsi_temuan' => 'Temuan C', 'no_klausul' => '3.1.1', 'pabrik' => 'ckp']);
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get('/non-conformities?sort=klausul&dir=asc')
+        ->assertOk()
+        ->assertSeeInOrder(['Temuan A', 'Temuan B', 'Temuan C']);
+
+    $this->actingAs($admin)
+        ->get('/non-conformities?sort=temuan&dir=desc')
+        ->assertOk()
+        ->assertSeeInOrder(['Temuan C', 'Temuan B', 'Temuan A']);
+});
+
+test('an unknown sort column is rejected', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->get('/non-conformities?sort=foto_temuan')
+        ->assertSessionHasErrors('sort');
+});

@@ -2,11 +2,13 @@
  * Non-Conformities list: search + filter panel that reload only the results
  * (a Blade fragment) over AJAX and keep the URL in sync.
  *
+ * Column headers (buttons with data-sort) sort the list: asc → desc → back to the default order.
+ *
  * Also handles the row actions: ticking rows for bulk open / closed / delete, deleting
  * one row, and uploading a photo straight into a photo cell.
  *
  * Usage: x-data="nonConformityList({ url, filters, departments, bulkUrl, destroyUrl, photoUrl })"
- *   filters     – current query values (q, pabrik, departemen, kategori, status, dari, sampai, per_page)
+ *   filters     – current query values (q, pabrik, departemen, kategori, status, dari, sampai, per_page, sort, dir)
  *   departments – { plantCode: { departmentCode: name } } for the plants the user can see
  *   destroyUrl  – DELETE url with ":id"; photoUrl – POST url with ":id" and ":field"
  */
@@ -42,6 +44,8 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
     dari: filters.dari ?? '',
     sampai: filters.sampai ?? '',
     perPage: filters.per_page ?? '',
+    sort: filters.sort ?? '',
+    dir: filters.dir ?? '',
     page: Number(new URL(window.location.href).searchParams.get('page')) || 1,
     filterOpen: false,
     loading: false,
@@ -61,7 +65,7 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
 
     query() {
         const params = new URLSearchParams();
-        const values = { q: this.q.trim(), ...Object.fromEntries(FILTER_KEYS.map((key) => [key, this[key]])), per_page: this.perPage };
+        const values = { q: this.q.trim(), ...Object.fromEntries(FILTER_KEYS.map((key) => [key, this[key]])), per_page: this.perPage, sort: this.sort, dir: this.sort && this.dir };
         Object.entries(values).forEach(([key, value]) => value && params.set(key, value));
         if (this.page > 1) params.set('page', this.page);
         return params.toString();
@@ -82,6 +86,20 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
     reset() {
         FILTER_KEYS.forEach((key) => (this[key] = ''));
         this.$refs.dateRange?.querySelectorAll('[data-date-input]').forEach((input) => window.Alpine.$data(input).clear(true));
+        this.apply();
+    },
+
+    /** Header click: a new column starts ascending, then descending, then the default order again. */
+    sortBy(column) {
+        if (this.sort !== column) {
+            this.sort = column;
+            this.dir = 'asc';
+        } else if (this.dir === 'asc') {
+            this.dir = 'desc';
+        } else {
+            this.sort = '';
+            this.dir = '';
+        }
         this.apply();
     },
 
@@ -116,6 +134,12 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
 
     /** Delegated from the results container, which is replaced on every load. */
     onResultsClick(event) {
+        const sortButton = event.target.closest('button[data-sort]');
+        if (sortButton) {
+            this.sortBy(sortButton.dataset.sort);
+            return;
+        }
+
         const link = event.target.closest('a[data-slot="pagination-link"]');
         if (!link) return;
         event.preventDefault();

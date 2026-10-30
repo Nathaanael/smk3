@@ -8,6 +8,7 @@ use App\Http\Controllers\Master\ClauseController;
 use App\Http\Controllers\NonConfirmities\FindingActionsController;
 use App\Http\Controllers\NonConfirmities\FindingExportController;
 use App\Http\Controllers\NonConfirmities\NonConfirmitiesController;
+use App\Http\Controllers\ProgressMonitoring\ProgressMonitoringController;
 use Illuminate\Support\Facades\Route;
 
 // authentication
@@ -31,9 +32,7 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     // SMK3 pages (all roles)
-    Route::get('/progress-monitoring', function () {
-        return view('pages.smk3.progress-monitoring', ['title' => __('smk3.progressMonitoring')]);
-    })->name('progress-monitoring');
+    Route::get('/progress-monitoring', [ProgressMonitoringController::class, 'index'])->name('progress-monitoring');
 
     Route::get('/non-conformities', [NonConfirmitiesController::class, 'index'])->name('non-conformities');
     Route::get('/non-conformities/create', [NonConfirmitiesController::class, 'create'])

@@ -15,7 +15,20 @@ class FindingFilterRequest extends FormRequest
 {
     public const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-    public const FILTERS = ['q', 'pabrik', 'departemen', 'kategori', 'status', 'dari', 'sampai'];
+    public const FILTERS = ['q', 'pabrik', 'departemen', 'kategori', 'status', 'dari', 'sampai', 'sort', 'dir'];
+
+    /** Columns the list can be sorted by (query value => database column). */
+    public const SORTABLE = [
+        'id' => 'id',
+        'tanggal' => 'tanggal',
+        'pabrik' => 'pabrik',
+        'departemen' => 'departemen',
+        'temuan' => 'deskripsi_temuan',
+        'klausul' => 'no_klausul',
+        'kategori' => 'kategori',
+        'pic' => 'pic',
+        'status' => 'status',
+    ];
 
     /**
      * @return array<string, mixed>
@@ -31,11 +44,13 @@ class FindingFilterRequest extends FormRequest
             'dari' => ['nullable', 'date'],
             'sampai' => ['nullable', 'date', 'after_or_equal:dari'],
             'per_page' => ['nullable', 'integer', Rule::in(self::PER_PAGE_OPTIONS)],
+            'sort' => ['nullable', Rule::in(array_keys(self::SORTABLE))],
+            'dir' => ['nullable', Rule::in(['asc', 'desc'])],
         ];
     }
 
     /**
-     * Findings matching the filters, newest first.
+     * Findings matching the filters, in the chosen order (newest first by default).
      *
      * @return Builder<NonConformity>
      */
@@ -59,7 +74,11 @@ class FindingFilterRequest extends FormRequest
                         ->orWhere('no_klausul', 'like', "%{$search}%");
                 });
             })
-            ->latest('tanggal')
-            ->latest('id');
+            ->when(
+                $filters['sort'] ?? null,
+                fn ($query, $sort) => $query->orderBy(self::SORTABLE[$sort], $filters['dir'] ?? 'asc')
+                    ->when($sort !== 'id', fn ($query) => $query->latest('id')),
+                fn ($query) => $query->latest('tanggal')->latest('id'),
+            );
     }
 }
