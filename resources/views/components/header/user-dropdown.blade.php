@@ -23,7 +23,7 @@
                 <span>{{ __('userDropdown.language') }}</span>
                 <x-ui.badge variant="light" color="gray" size="sm" class="ms-auto me-1 h-auto gap-1.5 border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 text-shadow-none dark:border-gray-800 dark:bg-white/3 dark:text-gray-300 dark:text-shadow-none [&>img]:size-3.5">
                     <span>{{ $currentLanguage['shortName'] }}</span>
-                    <img src="/assets/images/icons/{{ $currentLanguage['flag'] }}" alt="{{ $currentLanguage['name'] }}" class="size-3.5 shrink-0 overflow-hidden rounded-full" />
+                    <img src="{{ asset('assets/images/icons/' . $currentLanguage['flag']) }}" alt="{{ $currentLanguage['name'] }}" class="size-3.5 shrink-0 overflow-hidden rounded-full" />
                 </x-ui.badge>
             </x-ui.dropdown-menu.sub-trigger>
 
@@ -44,7 +44,7 @@
                             'bg-brand-500 dark:bg-brand-400' => $id === $currentLocale,
                             'opacity-0' => $id !== $currentLocale,
                         ])></span>
-                        <img src="/assets/images/icons/{{ $language['flag'] }}" alt="{{ $language['name'] }}" class="size-5 shrink-0 overflow-hidden rounded-full" />
+                        <img src="{{ asset('assets/images/icons/' . $language['flag']) }}" alt="{{ $language['name'] }}" class="size-5 shrink-0 overflow-hidden rounded-full" />
                         <span class="truncate">{{ $language['name'] }}</span>
                     </x-ui.dropdown-menu.item>
                 @endforeach

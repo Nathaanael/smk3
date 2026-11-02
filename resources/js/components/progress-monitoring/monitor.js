@@ -6,8 +6,7 @@
  *   filters      – current values (pabrik, dari, sampai)
  *   currentMonth – [first day, last day] of this month, for the "This month" button
  *
- * Both dates are always sent, so clearing them means "all dates" (no dates at all is the
- * server's default: the current month).
+ * Empty dates mean "all dates", which is also the server's default.
  */
 export default ({ url, filters = {}, currentMonth = ['', ''] }) => ({
     url,

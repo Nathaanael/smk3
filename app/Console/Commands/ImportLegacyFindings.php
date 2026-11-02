@@ -66,7 +66,7 @@ class ImportLegacyFindings extends Command
                     'no_klausul' => trim((string) $row['no_klausul']),
                     'kategori' => trim((string) $row['kategori']),
                     'pic' => $pic,
-                    'status' => (bool) (int) $row['status'],
+                    'status' => $this->flag($row['status']),
                     // the legacy table has no timestamps; the finding date is the closest we have
                     'created_at' => $row['tanggal'],
                     'updated_at' => $row['tanggal'],
@@ -91,6 +91,12 @@ class ImportLegacyFindings extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    /** Legacy bit(1) status: 1 / '1' in phpMyAdmin dumps, the raw byte "\x01" in mysqldump ones. */
+    private function flag(int|string|null $value): bool
+    {
+        return in_array($value, [1, '1', "\x01"], true);
     }
 
     /**

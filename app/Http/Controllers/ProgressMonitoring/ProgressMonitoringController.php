@@ -11,8 +11,7 @@ use Illuminate\View\View;
 class ProgressMonitoringController extends Controller
 {
     /**
-     * Recap per department of one plant over a period; without dates it shows the current month
-     * (as the legacy dashboard did).
+     * Recap per department of one plant over a period; without dates it covers all data.
      */
     public function index(Request $request, ProgressMonitor $monitor): View|string
     {
@@ -29,10 +28,6 @@ class ProgressMonitoringController extends Controller
             'dari' => $validated['dari'] ?? null,
             'sampai' => $validated['sampai'] ?? null,
         ];
-        if (! $request->hasAny(['dari', 'sampai'])) {
-            $filters['dari'] = now()->startOfMonth()->toDateString();
-            $filters['sampai'] = now()->endOfMonth()->toDateString();
-        }
 
         $recap = $filters['pabrik']
             ? $monitor->recap($filters['pabrik'], $filters['dari'], $filters['sampai'])

@@ -19,8 +19,8 @@ test('every role can open the SMK3 pages', function (Role $role, string $path, s
 test('the sidebar links to both SMK3 pages', function () {
     $this->actingAs(User::factory()->create())
         ->get('/progress-monitoring')
-        ->assertSee('href="/progress-monitoring"', false)
-        ->assertSee('href="/non-conformities"', false);
+        ->assertSee('href="'.url('/progress-monitoring').'"', false)
+        ->assertSee('href="'.url('/non-conformities').'"', false);
 });
 
 test('non-admins are sent from the home page to progress monitoring', function () {
@@ -33,13 +33,13 @@ test('admins and auditors see the master menu', function (Role $role) {
     $this->actingAs(User::factory()->create(['otorisasi' => $role]))
         ->get('/progress-monitoring')
         ->assertSee(__('master.title'))
-        ->assertSee('href="/master/auditee"', false)
-        ->assertSee('href="/master/auditor"', false)
-        ->assertSee('href="/master/clauses"', false);
+        ->assertSee('href="'.url('/master/auditee').'"', false)
+        ->assertSee('href="'.url('/master/auditor').'"', false)
+        ->assertSee('href="'.url('/master/clauses').'"', false);
 })->with([Role::Admin, Role::Auditor]);
 
 test('auditees do not see the master menu', function () {
     $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditee]))
         ->get('/progress-monitoring')
-        ->assertDontSee('href="/master/auditee"', false);
+        ->assertDontSee('href="'.url('/master/auditee').'"', false);
 });

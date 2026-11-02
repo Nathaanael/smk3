@@ -41,7 +41,7 @@
     {{ $attributes->merge(['class' => 'relative isolate overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 md:p-8 dark:border-gray-800 dark:bg-white/3']) }}
 >
     {{-- decoration --}}
-    <img src="/assets/images/shape/grid-01.svg" alt="" aria-hidden="true"
+    <img src="{{ asset('assets/images/shape/grid-01.svg') }}" alt="" aria-hidden="true"
         class="pointer-events-none absolute end-0 top-0 -z-1 w-full max-w-90 opacity-50 select-none dark:opacity-20" />
 
     <div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">

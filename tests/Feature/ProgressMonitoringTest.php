@@ -66,7 +66,7 @@ test('the recap only counts findings of the plant and period', function () {
     expect(recapRow($recap, 'OIL')['total'])->toBe(1);
 });
 
-test('the page shows the current month of the first plant by default', function () {
+test('the page shows all data of the first plant by default', function () {
     finding('OIL', 'Minor');
     finding('OIL', 'Minor', date: now()->subMonthNoOverflow()->startOfMonth()->toDateString());
 
@@ -77,9 +77,10 @@ test('the page shows the current month of the first plant by default', function 
         ->assertSee(__('pm.groups.progress'))
         ->assertSee(__('pm.guide.title'))
         ->assertSeeText('(166 − 4) / 166 × 100')
-        ->assertViewHas('recap', fn (array $recap) => recapRow($recap, 'OIL')['total'] === 1)
+        ->assertSee(__('pm.allDates'))
+        ->assertViewHas('recap', fn (array $recap) => recapRow($recap, 'OIL')['total'] === 2)
         ->assertViewHas('filters', fn (array $filters) => $filters['pabrik'] === 'ckp'
-            && $filters['dari'] === now()->startOfMonth()->toDateString());
+            && $filters['dari'] === null && $filters['sampai'] === null);
 });
 
 test('empty dates show every finding of the plant', function () {

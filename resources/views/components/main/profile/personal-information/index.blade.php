@@ -37,7 +37,7 @@
         <!-- Profile Pic & Basic Meta -->
         <div class="mt-2 flex items-center gap-4 sm:gap-6">
             <x-ui.avatar class="size-16 shrink-0 sm:size-20">
-                <x-ui.avatar.image x-bind:src="profileData.avatarUrl || '/assets/images/user/owner.png'" x-bind:alt="profileData.fullName || 'User profile'" />
+                <x-ui.avatar.image x-bind:src="profileData.avatarUrl || '{{ asset('assets/images/user/owner.png') }}'" x-bind:alt="profileData.fullName || 'User profile'" />
                 <x-ui.avatar.fallback class="bg-brand-400 text-xl font-medium text-white sm:text-2xl dark:bg-brand-400 dark:text-white">
                     <span x-text="initialLetter"></span>
                 </x-ui.avatar.fallback>

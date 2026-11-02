@@ -19,7 +19,7 @@
                     touched: {},
                     avatarFileUrl: null,
                     get previewAvatarUrl() {
-                        return this.avatarFileUrl || this.form.avatarUrl || '/assets/images/user/user-01.jpg';
+                        return this.avatarFileUrl || this.form.avatarUrl || '{{ asset('assets/images/user/user-01.jpg') }}';
                     },
                     validate() {
                         const errors = {};

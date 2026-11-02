@@ -1,13 +1,13 @@
 <!-- @php
     $notifications = [
-        ['id' => '1', 'name' => 'Terry Franci', 'avatar' => '/assets/images/user/user-02.jpg', 'timeKey' => 'minAgo', 'timeCount' => 5, 'status' => 'online'],
-        ['id' => '2', 'name' => 'Alena Franci', 'avatar' => '/assets/images/user/user-03.jpg', 'timeKey' => 'minAgo', 'timeCount' => 8, 'status' => 'online'],
-        ['id' => '3', 'name' => 'Jocelyn Kenter', 'avatar' => '/assets/images/user/user-04.jpg', 'timeKey' => 'minAgo', 'timeCount' => 15, 'status' => 'online'],
-        ['id' => '4', 'name' => 'Brandon Philips', 'avatar' => '/assets/images/user/user-05.jpg', 'timeKey' => 'hrAgo', 'timeCount' => 1, 'status' => 'offline'],
-        ['id' => '5', 'name' => 'Terry Franci', 'avatar' => '/assets/images/user/user-02.jpg', 'timeKey' => 'minAgo', 'timeCount' => 5, 'status' => 'online'],
-        ['id' => '6', 'name' => 'Alena Franci', 'avatar' => '/assets/images/user/user-03.jpg', 'timeKey' => 'minAgo', 'timeCount' => 8, 'status' => 'online'],
-        ['id' => '7', 'name' => 'Jocelyn Kenter', 'avatar' => '/assets/images/user/user-04.jpg', 'timeKey' => 'minAgo', 'timeCount' => 15, 'status' => 'online'],
-        ['id' => '8', 'name' => 'Brandon Philips', 'avatar' => '/assets/images/user/user-05.jpg', 'timeKey' => 'hrAgo', 'timeCount' => 1, 'status' => 'offline'],
+        ['id' => '1', 'name' => 'Terry Franci', 'avatar' => asset('assets/images/user/user-02.jpg'), 'timeKey' => 'minAgo', 'timeCount' => 5, 'status' => 'online'],
+        ['id' => '2', 'name' => 'Alena Franci', 'avatar' => asset('assets/images/user/user-03.jpg'), 'timeKey' => 'minAgo', 'timeCount' => 8, 'status' => 'online'],
+        ['id' => '3', 'name' => 'Jocelyn Kenter', 'avatar' => asset('assets/images/user/user-04.jpg'), 'timeKey' => 'minAgo', 'timeCount' => 15, 'status' => 'online'],
+        ['id' => '4', 'name' => 'Brandon Philips', 'avatar' => asset('assets/images/user/user-05.jpg'), 'timeKey' => 'hrAgo', 'timeCount' => 1, 'status' => 'offline'],
+        ['id' => '5', 'name' => 'Terry Franci', 'avatar' => asset('assets/images/user/user-02.jpg'), 'timeKey' => 'minAgo', 'timeCount' => 5, 'status' => 'online'],
+        ['id' => '6', 'name' => 'Alena Franci', 'avatar' => asset('assets/images/user/user-03.jpg'), 'timeKey' => 'minAgo', 'timeCount' => 8, 'status' => 'online'],
+        ['id' => '7', 'name' => 'Jocelyn Kenter', 'avatar' => asset('assets/images/user/user-04.jpg'), 'timeKey' => 'minAgo', 'timeCount' => 15, 'status' => 'online'],
+        ['id' => '8', 'name' => 'Brandon Philips', 'avatar' => asset('assets/images/user/user-05.jpg'), 'timeKey' => 'hrAgo', 'timeCount' => 1, 'status' => 'offline'],
     ];
     $initials = fn (string $name) => strtoupper(collect(explode(' ', $name))->map(fn ($n) => mb_substr($n, 0, 1))->take(2)->implode(''));
 @endphp

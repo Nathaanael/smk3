@@ -3,8 +3,8 @@
     <div class="mx-auto w-full max-w-60.5 text-center sm:max-w-118">
         <h1 class="mb-8 font-bold text-gray-800 dark:text-white/90">ERROR</h1>
 
-        <img src="/assets/images/error/404.svg" alt="404" class="dark:hidden" width="472" height="152" />
-        <img src="/assets/images/error/404-dark.svg" alt="404" class="hidden dark:block" width="472" height="152" />
+        <img src="{{ asset('assets/images/error/404.svg') }}" alt="404" class="dark:hidden" width="472" height="152" />
+        <img src="{{ asset('assets/images/error/404-dark.svg') }}" alt="404" class="hidden dark:block" width="472" height="152" />
 
         <p class="mt-10 mb-6 text-base text-gray-700 sm:text-lg dark:text-gray-400">We can’t seem to find the page you are looking for!</p>
 

@@ -2,7 +2,7 @@
 
 return [
     'defaultPersonalInfo' => [
-        'avatarUrl' => '/assets/images/user/user-01.jpg',
+        'avatarUrl' => asset('assets/images/user/user-01.jpg'),
         'fullName' => 'Musharof Chowdhury',
         'role' => 'Team Manager',
         'location' => 'Leeds, United Kingdom',
