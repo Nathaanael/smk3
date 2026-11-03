@@ -24,9 +24,6 @@ main() {
     npm ci
     npm run build
 
-    echo "==> Migrating database"
-    php artisan migrate --force
-
     echo "==> Clearing caches"
     php artisan optimize:clear
 
