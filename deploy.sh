@@ -15,7 +15,7 @@ main() {
     fi
 
     echo "==> Pulling latest code"
-    git pull company main
+    git pull origin main
 
     echo "==> Installing PHP dependencies"
     composer install --no-dev --optimize-autoloader --no-interaction
