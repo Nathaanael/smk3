@@ -19,20 +19,22 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
 
-Route::redirect('/signin', '/login');
+Route::get('/signin', fn () => redirect()->route('login'));
 
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 Route::middleware('auth')->group(function () {
-    // every role lands on the dashboard
-    Route::redirect('/', '/dashboard')->name('dashboard');
+    // every role lands on the dashboard.
+    // Not Route::redirect(): it drops the base path, so under a subfolder (XAMPP /smk3) it would
+    // send users to the web root's /dashboard (the XAMPP welcome page) instead of /smk3/dashboard.
+    Route::get('/', fn () => redirect()->route('dashboard.index'))->name('dashboard');
 
     Route::get('/dashboard', function () {
         return view('pages.dashboard.index', ['title' => 'Dashboard']);
     })->name('dashboard.index');
 
     // old admin-only URL, kept so bookmarks still work
-    Route::redirect('/admin/dashboard', '/dashboard', 301);
+    Route::get('/admin/dashboard', fn () => redirect()->route('dashboard.index', status: 301));
 
     // SMK3 pages (all roles)
     Route::get('/progress-monitoring', [ProgressMonitoringController::class, 'index'])->name('progress-monitoring');

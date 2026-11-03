@@ -33,3 +33,10 @@ test('template demo pages are no longer reachable', function (string $path) {
         ->get($path)
         ->assertNotFound();
 })->with(['/ecommerce', '/calendar', '/profile', '/basic-tables', '/buttons']);
+
+test('dashboard redirects keep the subfolder the app is served from', function (string $from) {
+    $this->actingAs(User::factory()->create())
+        ->withServerVariables(['SCRIPT_NAME' => '/smk3/index.php', 'SCRIPT_FILENAME' => public_path('index.php')])
+        ->get("http://10.126.27.187/smk3{$from}")
+        ->assertHeader('Location', 'http://10.126.27.187/smk3/dashboard');
+})->with(['/admin/dashboard']);
