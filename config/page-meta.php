@@ -2,7 +2,7 @@
 
 // Values are translation keys from lang/*.json; head-meta resolves them with __().
 return [
-    '/admin/dashboard' => [
+    '/dashboard' => [
         'title' => 'meta.dashboard.title',
         'description' => 'meta.dashboard.description',
     ],

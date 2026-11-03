@@ -7,25 +7,25 @@ uses(RefreshDatabase::class);
 
 test('the interface defaults to Indonesian', function () {
     $this->actingAs(User::factory()->admin()->create())
-        ->get('/admin/dashboard')
+        ->get('/dashboard')
         ->assertOk()
         ->assertSee('<html lang="id"', false)
-        ->assertSee('Selamat datang di panel admin SMK3 Monitoring.');
+        ->assertSee('Selamat datang di SMK3 Monitoring.');
 });
 
 test('users can switch the interface to English', function () {
     $admin = User::factory()->admin()->create();
 
     $this->actingAs($admin)
-        ->from('/admin/dashboard')
+        ->from('/dashboard')
         ->post('/locale', ['locale' => 'en'])
-        ->assertRedirect('/admin/dashboard')
+        ->assertRedirect('/dashboard')
         ->assertSessionHas('locale', 'en');
 
     $this->actingAs($admin)
-        ->get('/admin/dashboard')
+        ->get('/dashboard')
         ->assertSee('<html lang="en"', false)
-        ->assertSee('Welcome to the SMK3 Monitoring admin panel.');
+        ->assertSee('Welcome to SMK3 Monitoring.');
 });
 
 test('guests can switch the language on the login page', function () {

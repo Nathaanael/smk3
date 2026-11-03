@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('guests are redirected to the login page', function () {
-    $this->get('/admin/dashboard')->assertRedirect('/login');
+    $this->get('/dashboard')->assertRedirect('/login');
 });
 
 test('the login page can be rendered', function () {

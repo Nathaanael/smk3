@@ -10,13 +10,11 @@ class MenuHelper
     {
         $items = [];
 
-        if (auth()->user()?->isAdmin()) {
-            $items[] = [
-                'icon' => 'dashboard',
-                'name' => 'Dashboard',
-                'path' => '/admin/dashboard',
-            ];
-        }
+        $items[] = [
+            'icon' => 'dashboard',
+            'name' => 'Dashboard',
+            'path' => '/dashboard',
+        ];
 
         $items[] = [
             'icon' => 'charts',

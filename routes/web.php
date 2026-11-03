@@ -24,12 +24,15 @@ Route::redirect('/signin', '/login');
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 Route::middleware('auth')->group(function () {
-    // send each role to its own home page
-    Route::get('/', function () {
-        return auth()->user()->isAdmin()
-            ? redirect()->route('admin.dashboard')
-            : redirect()->route('progress-monitoring');
-    })->name('dashboard');
+    // every role lands on the dashboard
+    Route::redirect('/', '/dashboard')->name('dashboard');
+
+    Route::get('/dashboard', function () {
+        return view('pages.dashboard.index', ['title' => 'Dashboard']);
+    })->name('dashboard.index');
+
+    // old admin-only URL, kept so bookmarks still work
+    Route::redirect('/admin/dashboard', '/dashboard', 301);
 
     // SMK3 pages (all roles)
     Route::get('/progress-monitoring', [ProgressMonitoringController::class, 'index'])->name('progress-monitoring');
@@ -81,12 +84,5 @@ Route::middleware('auth')->group(function () {
         Route::post('/auditee/import', [AuditeeController::class, 'import'])->name('auditees.import');
         Route::put('/auditee/{account}', [AuditeeController::class, 'update'])->name('auditees.update');
         Route::delete('/auditee/{account}', [AuditeeController::class, 'destroy'])->name('auditees.destroy');
-    });
-
-    // admin pages
-    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/dashboard', function () {
-            return view('pages.admin.dashboard', ['title' => 'Dashboard']);
-        })->name('dashboard');
     });
 });

@@ -23,12 +23,6 @@ test('the sidebar links to both SMK3 pages', function () {
         ->assertSee('href="'.url('/non-conformities').'"', false);
 });
 
-test('non-admins are sent from the home page to progress monitoring', function () {
-    $this->actingAs(User::factory()->create())
-        ->get('/')
-        ->assertRedirect(route('progress-monitoring'));
-});
-
 test('admins and auditors see the master menu', function (Role $role) {
     $this->actingAs(User::factory()->create(['otorisasi' => $role]))
         ->get('/progress-monitoring')
