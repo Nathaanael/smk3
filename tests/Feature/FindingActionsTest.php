@@ -1,11 +1,15 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\FindingPhoto;
 use App\Models\NonConformity;
 use App\Models\Smk3Criterion;
 use App\Models\User;
+use App\Services\FindingPhotos;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -15,11 +19,11 @@ beforeEach(function () {
     $this->auditor = User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']);
 });
 
-function storedPhoto(string $folder): string
+function storedPhoto(NonConformity $finding, string $field, string $name = 'foto.jpg'): FindingPhoto
 {
-    Storage::disk('uploads')->put("{$folder}/foto.jpg", 'x');
+    Storage::disk('uploads')->put("{$field}/{$name}", 'x');
 
-    return "uploads/{$folder}/foto.jpg";
+    return $finding->photos()->create(['field' => $field, 'path' => "uploads/{$field}/{$name}"]);
 }
 
 test('ticked findings can be closed and reopened together', function () {
@@ -39,7 +43,9 @@ test('ticked findings can be closed and reopened together', function () {
 });
 
 test('bulk delete removes the findings and their photos, but only those the user may see', function () {
-    $mine = NonConformity::factory()->create(['pabrik' => 'ckp', 'foto_temuan' => storedPhoto('foto_temuan')]);
+    $mine = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    storedPhoto($mine, 'foto_temuan');
+    storedPhoto($mine, 'foto_temuan', 'kedua.jpg');
     $otherPlant = NonConformity::factory()->create(['pabrik' => 'psr']);
 
     $this->actingAs($this->auditor)
@@ -49,7 +55,8 @@ test('bulk delete removes the findings and their photos, but only those the user
 
     expect($mine->fresh())->toBeNull()
         ->and($otherPlant->fresh())->not->toBeNull();
-    Storage::disk('uploads')->assertMissing('foto_temuan/foto.jpg');
+    Storage::disk('uploads')->assertMissing(['foto_temuan/foto.jpg', 'foto_temuan/kedua.jpg']);
+    expect(FindingPhoto::count())->toBe(0);
 });
 
 test('auditees cannot use bulk actions, edit or delete', function () {
@@ -77,10 +84,11 @@ test('findings of another plant cannot be edited', function () {
     $this->actingAs($this->auditor)->get("/non-conformities/{$finding->id}/edit")->assertNotFound();
 });
 
-test('a finding can be edited, including its status and repair photo', function () {
+test('a finding can be edited, including its status, and new repair photos join the stored ones', function () {
     Smk3Criterion::create(['nomor' => 1, 'no_kriteria' => '6.5.3', 'kriteria' => 'Sertifikat peralatan', 'minor' => true, 'major' => false, 'kritis' => false]);
     $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'OIL']);
-    $finding = NonConformity::factory()->open()->create(['pabrik' => 'ckp', 'foto_perbaikan' => storedPhoto('foto_perbaikan')]);
+    $finding = NonConformity::factory()->open()->create(['pabrik' => 'ckp']);
+    storedPhoto($finding, 'foto_perbaikan');
 
     $this->actingAs($this->auditor)->get("/non-conformities/{$finding->id}/edit")
         ->assertOk()
@@ -91,7 +99,7 @@ test('a finding can be edited, including its status and repair photo', function 
         ->put("/non-conformities/{$finding->id}", [
             'tanggal' => '2026-10-20', 'pabrik' => 'ckp', 'departemen' => 'OIL', 'deskripsi_temuan' => 'Sertifikat forklift habis',
             'no_klausul' => '6.5.3', 'kategori' => 'Minor', 'pic' => $pic->email, 'status' => '1',
-            'foto_perbaikan' => UploadedFile::fake()->image('perbaikan.jpg'),
+            'foto_perbaikan' => [UploadedFile::fake()->image('perbaikan.jpg'), UploadedFile::fake()->image('perbaikan2.jpg')],
         ])
         ->assertRedirect(route('non-conformities'))
         ->assertSessionHas('success', __('nc.updated', ['id' => $finding->id]));
@@ -99,39 +107,166 @@ test('a finding can be edited, including its status and repair photo', function 
     $finding->refresh();
     expect($finding->deskripsi_temuan)->toBe('Sertifikat forklift habis')
         ->and($finding->isClosed())->toBeTrue()
-        ->and($finding->foto_perbaikan)->not->toBe('uploads/foto_perbaikan/foto.jpg');
-    Storage::disk('uploads')->assertMissing('foto_perbaikan/foto.jpg');
+        ->and($finding->photosOf('foto_perbaikan'))->toHaveCount(3);
+    Storage::disk('uploads')->assertExists('foto_perbaikan/foto.jpg');
 });
 
-test('a photo can be uploaded straight from the table', function () {
-    $finding = NonConformity::factory()->create(['pabrik' => 'ckp', 'foto_temuan' => null]);
+test('several photos can be added straight from the table', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
 
     $this->actingAs($this->auditor)
-        ->post("/non-conformities/{$finding->id}/photos/foto_temuan", ['photo' => UploadedFile::fake()->image('temuan.jpg')], ['Accept' => 'application/json'])
+        ->post("/non-conformities/{$finding->id}/photos/foto_temuan", ['photos' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->image('b.jpg')]], ['Accept' => 'application/json'])
         ->assertOk()
-        ->assertJsonPath('message', __('nc.photoSaved', ['id' => $finding->id]));
+        ->assertJsonPath('message', __('nc.photosSaved', ['count' => 2, 'id' => $finding->id]));
 
-    expect($finding->fresh()->foto_temuan)->toStartWith('uploads/foto_temuan/');
+    $photos = $finding->fresh()->photosOf('foto_temuan');
+    expect($photos)->toHaveCount(2)
+        ->and($photos[0]->path)->toStartWith('uploads/foto_temuan/')
+        ->and($finding->fresh()->photosOf('foto_perbaikan'))->toBeEmpty();
+    Storage::disk('uploads')->assertExists((string) str($photos[1]->path)->after('uploads/'));
 });
 
-test('auditees may upload only the repair photo of their own findings', function () {
+test('a field holds at most the maximum number of photos', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    foreach (range(1, FindingPhotos::MAX_PER_FIELD - 1) as $number) {
+        storedPhoto($finding, 'foto_temuan', "{$number}.jpg");
+    }
+
+    $this->actingAs($this->auditor)
+        ->post("/non-conformities/{$finding->id}/photos/foto_temuan", ['photos' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->image('b.jpg')]], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['photos' => __('nc.create.photoLimit', ['max' => FindingPhotos::MAX_PER_FIELD])]);
+
+    // the other field has its own limit, and the last free place can still be used
+    $this->actingAs($this->auditor)
+        ->post("/non-conformities/{$finding->id}/photos/foto_perbaikan", ['photos' => [UploadedFile::fake()->image('a.jpg'), UploadedFile::fake()->image('b.jpg')]], ['Accept' => 'application/json'])
+        ->assertOk();
+    $this->actingAs($this->auditor)
+        ->post("/non-conformities/{$finding->id}/photos/foto_temuan", ['photos' => [UploadedFile::fake()->image('a.jpg')]], ['Accept' => 'application/json'])
+        ->assertOk();
+
+    expect($finding->fresh()->photosOf('foto_temuan'))->toHaveCount(FindingPhotos::MAX_PER_FIELD);
+});
+
+test('adding photos needs at least one image', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    $url = "/non-conformities/{$finding->id}/photos/foto_temuan";
+
+    $this->actingAs($this->auditor)->post($url, [], ['Accept' => 'application/json'])
+        ->assertUnprocessable()->assertJsonValidationErrors('photos');
+    $this->actingAs($this->auditor)->post($url, ['photos' => [UploadedFile::fake()->create('catatan.pdf', 10, 'application/pdf')]], ['Accept' => 'application/json'])
+        ->assertUnprocessable()->assertJsonValidationErrors('photos.0');
+
+    expect(FindingPhoto::count())->toBe(0);
+});
+
+test('auditees may add only repair photos to their own findings', function () {
     $auditee = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'OIL']);
     $own = NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'OIL']);
     $otherDepartment = NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'QC']);
-    $photo = fn () => ['photo' => UploadedFile::fake()->image('foto.jpg')];
+    $photo = fn () => ['photos' => [UploadedFile::fake()->image('foto.jpg')]];
 
     $this->actingAs($auditee)->post("/non-conformities/{$own->id}/photos/foto_perbaikan", $photo(), ['Accept' => 'application/json'])->assertOk();
     $this->actingAs($auditee)->post("/non-conformities/{$own->id}/photos/foto_temuan", $photo(), ['Accept' => 'application/json'])->assertForbidden();
     $this->actingAs($auditee)->post("/non-conformities/{$otherDepartment->id}/photos/foto_perbaikan", $photo(), ['Accept' => 'application/json'])->assertNotFound();
 
-    expect($own->fresh()->foto_perbaikan)->toStartWith('uploads/foto_perbaikan/');
+    expect($own->fresh()->photosOf('foto_perbaikan'))->toHaveCount(1)
+        ->and($own->fresh()->photosOf('foto_temuan'))->toBeEmpty();
 });
 
-test('photos are linked to open in a new tab instead of shown as thumbnails', function () {
-    NonConformity::factory()->create(['pabrik' => 'ckp', 'foto_temuan' => 'uploads/foto_temuan/a.jpg']);
+test('one photo can be deleted, leaving the others', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    $first = storedPhoto($finding, 'foto_temuan', 'a.jpg');
+    $second = storedPhoto($finding, 'foto_temuan', 'b.jpg');
 
-    $this->actingAs($this->auditor)->get('/non-conformities')
-        ->assertSee('target="_blank"', false)
-        ->assertSee(__('nc.viewPhoto'))
-        ->assertDontSee('<img src="'.asset('uploads/foto_temuan/a.jpg').'"', false);
+    $this->actingAs($this->auditor)->deleteJson("/non-conformities/{$finding->id}/photos/{$first->id}")
+        ->assertOk()
+        ->assertJsonPath('message', __('nc.photoDeleted', ['id' => $finding->id]));
+
+    expect($first->fresh())->toBeNull()->and($second->fresh())->not->toBeNull();
+    Storage::disk('uploads')->assertMissing('foto_temuan/a.jpg');
+    Storage::disk('uploads')->assertExists('foto_temuan/b.jpg');
+});
+
+test('photos can only be deleted by those who may add them', function () {
+    $auditee = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'OIL']);
+    $own = NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'OIL']);
+    $otherDepartment = NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'QC']);
+    $otherPlant = NonConformity::factory()->create(['pabrik' => 'psr']);
+
+    $findingPhoto = storedPhoto($own, 'foto_temuan');
+    $repairPhoto = storedPhoto($own, 'foto_perbaikan');
+    $hidden = storedPhoto($otherDepartment, 'foto_perbaikan', 'lain.jpg');
+    $foreign = storedPhoto($otherPlant, 'foto_temuan', 'psr.jpg');
+
+    $this->actingAs($auditee)->deleteJson("/non-conformities/{$own->id}/photos/{$findingPhoto->id}")->assertForbidden();
+    $this->actingAs($auditee)->deleteJson("/non-conformities/{$otherDepartment->id}/photos/{$hidden->id}")->assertNotFound();
+    $this->actingAs($this->auditor)->deleteJson("/non-conformities/{$otherPlant->id}/photos/{$foreign->id}")->assertNotFound();
+    // a visible finding in the URL does not open up another finding's photo
+    $this->actingAs($auditee)->deleteJson("/non-conformities/{$own->id}/photos/{$hidden->id}")->assertNotFound();
+
+    $this->actingAs($auditee)->deleteJson("/non-conformities/{$own->id}/photos/{$repairPhoto->id}")->assertOk();
+
+    expect($repairPhoto->fresh())->toBeNull()
+        ->and($findingPhoto->fresh())->not->toBeNull()
+        ->and($hidden->fresh())->not->toBeNull()
+        ->and($foreign->fresh())->not->toBeNull();
+});
+
+test('photos open in a modal on the same page, with the key facts of the finding', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp', 'deskripsi_temuan' => 'Panel listrik terbuka']);
+    $photo = storedPhoto($finding, 'foto_temuan');
+    storedPhoto($finding, 'foto_temuan', 'b.jpg');
+
+    $response = $this->actingAs($this->auditor)->get('/non-conformities')
+        ->assertOk()
+        ->assertDontSee('<a href="'.asset('uploads/foto_temuan/foto.jpg').'"', false)
+        ->assertSee('finding-photos-open', false)
+        ->assertSee(__('nc.photoViewer.details'));
+
+    preg_match('/data-photo-viewer="([^"]+)"/', $response->getContent(), $match);
+    $viewer = json_decode(html_entity_decode($match[1], ENT_QUOTES), true);
+
+    expect($viewer['id'])->toBe($finding->id)
+        ->and($viewer['photos']['foto_temuan'])->toHaveCount(2)
+        ->and($viewer['photos']['foto_temuan'][0])->toBe(['id' => $photo->id, 'url' => asset('uploads/foto_temuan/foto.jpg')])
+        ->and($viewer['photos']['foto_perbaikan'])->toBeEmpty()
+        ->and($viewer['canDelete'])->toBe(['foto_temuan' => true, 'foto_perbaikan' => true])
+        ->and(array_column($viewer['details'], 'value'))->toContain('Panel listrik terbuka');
+});
+
+test('the modal of an auditee only offers to delete repair photos', function () {
+    $auditee = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'OIL']);
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'OIL']);
+    storedPhoto($finding, 'foto_temuan');
+
+    $response = $this->actingAs($auditee)->get('/non-conformities')->assertOk();
+
+    preg_match('/data-photo-viewer="([^"]+)"/', $response->getContent(), $match);
+    expect(json_decode(html_entity_decode($match[1], ENT_QUOTES), true)['canDelete'])
+        ->toBe(['foto_temuan' => false, 'foto_perbaikan' => true]);
+});
+
+test('the migration moves stored photos to the new table and back', function () {
+    $migration = require database_path('migrations/2026_11_04_000000_create_non_conformity_photos_table.php');
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    $empty = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    $finding->photos()->create(['field' => 'foto_temuan', 'path' => 'uploads/foto_temuan/lama.jpg']);
+    $finding->photos()->create(['field' => 'foto_temuan', 'path' => 'uploads/foto_temuan/baru.jpg']);
+    $finding->photos()->create(['field' => 'foto_perbaikan', 'path' => 'uploads/foto_perbaikan/lama.jpg']);
+
+    // down keeps the oldest photo of each field in the old columns
+    $migration->down();
+    $row = DB::table('non_conformities')->find($finding->id);
+    expect($row->foto_temuan)->toBe('uploads/foto_temuan/lama.jpg')
+        ->and($row->foto_perbaikan)->toBe('uploads/foto_perbaikan/lama.jpg')
+        ->and(DB::table('non_conformities')->find($empty->id)->foto_temuan)->toBeNull();
+
+    $migration->up();
+    expect(Schema::hasColumn('non_conformities', 'foto_temuan'))->toBeFalse()
+        ->and(FindingPhoto::orderBy('id')->pluck('path', 'field')->all())->toBe([
+            'foto_temuan' => 'uploads/foto_temuan/lama.jpg',
+            'foto_perbaikan' => 'uploads/foto_perbaikan/lama.jpg',
+        ])
+        ->and(FindingPhoto::where('non_conformity_id', $empty->id)->count())->toBe(0);
 });

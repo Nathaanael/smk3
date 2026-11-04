@@ -24,6 +24,9 @@
             categories: @js($categories),
             suggestUrl: @js(route('non-conformities.clause-suggestions')),
             values: @js((object) $values),
+            viewer: @js($finding?->photoViewerData(true)),
+            maxPhotos: @js(\App\Services\FindingPhotos::MAX_PER_FIELD),
+            photoLimitMessage: @js(__('nc.create.photoLimit', ['max' => \App\Services\FindingPhotos::MAX_PER_FIELD])),
         })"
         x-on:submit="submitting ? $event.preventDefault() : (submitting = true)">
         @csrf
@@ -78,31 +81,8 @@
                             @error('deskripsi_temuan') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                         </div>
 
-                        <div>
-                            <label for="create-foto" class="{{ $labelClass }}">
-                                {{ __('nc.columns.findingPhoto') }}
-                                <span class="font-normal text-gray-400 dark:text-gray-500">({{ __('nc.create.optional') }})</span>
-                            </label>
-                            <input type="hidden" name="_had_photo" x-bind:value="photoName ? 1 : ''">
-                            <x-ui.file-input id="create-foto" name="foto_temuan" accept="image/*" x-ref="photo" x-on:change="choosePhoto($event)"
-                                :aria-invalid="$errors->has('foto_temuan') ? 'true' : null" />
-                            <p class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                                {{ __('nc.create.photoHint') }}
-                                @if ($finding?->foto_temuan)
-                                    {{ __('nc.edit.photoReplaces') }}
-                                    <a href="{{ asset($finding->foto_temuan) }}" target="_blank" rel="noopener" class="font-medium text-brand-500 hover:underline dark:text-brand-400">{{ __('nc.edit.currentPhoto') }}</a>
-                                @endif
-                            </p>
-                            @error('foto_temuan') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
-
-                            <div x-show="photoUrl" x-cloak class="relative mt-3 w-fit">
-                                <img x-bind:src="photoUrl" x-bind:alt="photoName" class="max-h-64 rounded-xl border border-gray-200 object-contain dark:border-gray-800">
-                                <x-ui.button type="button" variant="outline" size="icon-sm" class="absolute end-2 top-2 bg-white/90 dark:bg-gray-900/90"
-                                    x-on:click="clearPhoto()" aria-label="{{ __('nc.create.removePhoto') }}" title="{{ __('nc.create.removePhoto') }}">
-                                    <x-svg.x class="size-4" />
-                                </x-ui.button>
-                            </div>
-                        </div>
+                        <input type="hidden" name="_had_photo" x-bind:value="hasChosenPhotos ? 1 : ''">
+                        <x-main.non-conformities.photo-picker field="foto_temuan" id="create-foto" :label="__('nc.columns.findingPhoto')" :editing="$finding !== null" />
                     </div>
                 </section>
 
@@ -235,22 +215,7 @@
                                 @error('status') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
                             </fieldset>
 
-                            <div>
-                                <label for="edit-foto-perbaikan" class="{{ $labelClass }}">
-                                    {{ __('nc.columns.repairPhoto') }}
-                                    <span class="font-normal text-gray-400 dark:text-gray-500">({{ __('nc.create.optional') }})</span>
-                                </label>
-                                <x-ui.file-input id="edit-foto-perbaikan" name="foto_perbaikan" accept="image/*"
-                                    :aria-invalid="$errors->has('foto_perbaikan') ? 'true' : null" />
-                                <p class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                                    {{ __('nc.create.photoHint') }}
-                                    @if ($finding->foto_perbaikan)
-                                        {{ __('nc.edit.photoReplaces') }}
-                                        <a href="{{ asset($finding->foto_perbaikan) }}" target="_blank" rel="noopener" class="font-medium text-brand-500 hover:underline dark:text-brand-400">{{ __('nc.edit.currentPhoto') }}</a>
-                                    @endif
-                                </p>
-                                @error('foto_perbaikan') <x-ui.field.error class="mt-1.5">{{ $message }}</x-ui.field.error> @enderror
-                            </div>
+                            <x-main.non-conformities.photo-picker field="foto_perbaikan" id="edit-foto-perbaikan" :label="__('nc.columns.repairPhoto')" editing />
                         </div>
                     </section>
                 @endif
@@ -278,4 +243,8 @@
             </div>
         </div>
     </form>
+
+    @if ($finding)
+        <x-main.non-conformities.photo-viewer />
+    @endif
 @endsection

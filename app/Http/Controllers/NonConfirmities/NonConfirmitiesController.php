@@ -57,12 +57,10 @@ class NonConfirmitiesController extends Controller
 
     public function store(Request $request, FindingPhotos $photos): RedirectResponse
     {
-        $validated = $request->validate($this->rules($request));
+        $validated = $request->validate($this->rules($request) + FindingPhotos::rules('foto_temuan'), $this->photoMessages());
 
-        $finding = NonConformity::create(collect($validated)->except('foto_temuan')->all());
-        if ($request->hasFile('foto_temuan')) {
-            $photos->replace($finding, 'foto_temuan', $request->file('foto_temuan'));
-        }
+        $finding = NonConformity::create(collect($validated)->except(FindingPhotos::FIELDS)->all());
+        $photos->add($finding, 'foto_temuan', $validated['foto_temuan'] ?? []);
 
         // "Save & add another": back to an empty form for the next finding of the same audit round
         if ($request->boolean('another')) {
@@ -80,7 +78,7 @@ class NonConfirmitiesController extends Controller
 
         return view('pages.nonConfirmities.create', $this->formData($request) + [
             'title' => __('nc.edit.title', ['id' => $finding->id]),
-            'finding' => $finding,
+            'finding' => $finding->load(['picUser:id,name,email', 'photos']),
             'keep' => [],
         ]);
     }
@@ -89,16 +87,17 @@ class NonConfirmitiesController extends Controller
     {
         $this->ensureVisible($request->user(), $finding);
 
-        $validated = $request->validate($this->rules($request) + [
-            'status' => ['required', 'boolean'],
-            'foto_perbaikan' => ['nullable', 'image', 'max:10240', 'dimensions:max_width=10000,max_height=10000'],
-        ]);
+        $validated = $request->validate(
+            $this->rules($request)
+                + ['status' => ['required', 'boolean']]
+                + FindingPhotos::rules('foto_temuan', $finding)
+                + FindingPhotos::rules('foto_perbaikan', $finding),
+            $this->photoMessages(),
+        );
 
         $finding->update(collect($validated)->except(FindingPhotos::FIELDS)->all());
         foreach (FindingPhotos::FIELDS as $field) {
-            if ($request->hasFile($field)) {
-                $photos->replace($finding, $field, $request->file($field));
-            }
+            $photos->add($finding, $field, $validated[$field] ?? []);
         }
 
         return redirect()->route('non-conformities')->with('success', __('nc.updated', ['id' => $finding->id]));
@@ -156,8 +155,6 @@ class NonConfirmitiesController extends Controller
             'pabrik' => ['required', Rule::in($plants)],
             'departemen' => ['required', Rule::in(array_keys(NonConformity::departmentsFor(is_string($plant) ? $plant : null)))],
             'deskripsi_temuan' => ['required', 'string', 'max:2000'],
-            // photos are compressed before storing, so a full-size phone photo is fine
-            'foto_temuan' => ['nullable', 'image', 'max:10240', 'dimensions:max_width=10000,max_height=10000'],
             'no_klausul' => ['required', 'string', 'max:50', Rule::exists('smk3_kriteria', 'no_kriteria')],
             'kategori' => [
                 'required', Rule::in(config('smk3.categories')),
@@ -180,6 +177,16 @@ class NonConfirmitiesController extends Controller
                 },
             ],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function photoMessages(): array
+    {
+        $message = __('nc.create.photoLimit', ['max' => FindingPhotos::MAX_PER_FIELD]);
+
+        return ['foto_temuan.max' => $message, 'foto_perbaikan.max' => $message];
     }
 
     /**

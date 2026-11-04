@@ -70,7 +70,17 @@ class ImportLegacyFindings extends Command
                     // the legacy table has no timestamps; the finding date is the closest we have
                     'created_at' => $row['tanggal'],
                     'updated_at' => $row['tanggal'],
-                ] + $photos);
+                ]);
+
+                foreach (array_filter($photos) as $column => $path) {
+                    DB::table('non_conformity_photos')->insert([
+                        'non_conformity_id' => $row['id'],
+                        'field' => $column,
+                        'path' => $path,
+                        'created_at' => $row['tanggal'],
+                        'updated_at' => $row['tanggal'],
+                    ]);
+                }
             }
 
             $stats['imported']++;

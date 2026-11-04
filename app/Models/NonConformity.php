@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Services\FindingPhotos;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NonConformity extends Model
 {
@@ -18,11 +21,9 @@ class NonConformity extends Model
         'pabrik',
         'departemen',
         'deskripsi_temuan',
-        'foto_temuan',
         'no_klausul',
         'kategori',
         'pic',
-        'foto_perbaikan',
         'status',
     ];
 
@@ -42,9 +43,73 @@ class NonConformity extends Model
         return $this->belongsTo(User::class, 'pic', 'email');
     }
 
+    /**
+     * @return HasMany<FindingPhoto, $this>
+     */
+    public function photos(): HasMany
+    {
+        return $this->hasMany(FindingPhoto::class, 'non_conformity_id')->orderBy('id');
+    }
+
+    /**
+     * Photos of one field, oldest first.
+     *
+     * @return Collection<int, FindingPhoto>
+     */
+    public function photosOf(string $field): Collection
+    {
+        return $this->photos->where('field', $field)->values();
+    }
+
     public function isClosed(): bool
     {
         return $this->status;
+    }
+
+    /** Badge colour of the category. */
+    public function categoryColor(): string
+    {
+        return match ($this->kategori) {
+            'Kritis' => 'error',
+            'Major' => 'warning',
+            'Minor' => 'info',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * What the photo viewer modal shows: the photos per field and the key facts of the finding.
+     *
+     * @return array<string, mixed>
+     */
+    public function photoViewerData(bool $canManage): array
+    {
+        $row = fn (string $label, ?string $value, ?string $badge = null) => [
+            'label' => __($label),
+            'value' => $value ?: '—',
+            'badge' => $value ? $badge : null,
+        ];
+
+        return [
+            'id' => $this->id,
+            // auditees may only remove repair photos, like they may only add those
+            'canDelete' => ['foto_temuan' => $canManage, 'foto_perbaikan' => true],
+            'photos' => collect(FindingPhotos::FIELDS)->mapWithKeys(fn (string $field) => [
+                $field => $this->photosOf($field)
+                    ->map(fn (FindingPhoto $photo) => ['id' => $photo->id, 'url' => asset($photo->path)])
+                    ->all(),
+            ])->all(),
+            'details' => [
+                $row('nc.columns.date', $this->tanggal->translatedFormat('d M Y')),
+                $row('nc.columns.plant', $this->plantName()),
+                $row('nc.columns.department', $this->departmentName()),
+                $row('nc.columns.finding', $this->deskripsi_temuan),
+                $row('nc.columns.clause', $this->no_klausul),
+                $row('nc.columns.category', $this->kategori, $this->categoryColor()),
+                $row('nc.columns.pic', $this->picUser?->name ?? $this->pic),
+                $row('nc.columns.status', __($this->isClosed() ? 'nc.closed' : 'nc.open'), $this->isClosed() ? 'success' : 'warning'),
+            ],
+        ];
     }
 
     /**

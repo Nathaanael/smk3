@@ -26,6 +26,7 @@
             exportUrl: @js(route('non-conformities.export')),
             exportColumns: @js($exportColumns),
         })"
+        x-on:finding-photos-changed.window="onPhotosChanged($event.detail)"
         data-action-error="{{ __('nc.actionError') }}">
         <div class="flex flex-col gap-4 px-5 pt-5 sm:flex-row sm:items-start sm:justify-between sm:px-6 sm:pt-6">
             <div class="flex flex-col gap-1">
@@ -118,6 +119,8 @@
         {{-- export in progress (download() fetches the file, so the browser shows no loading of its own) --}}
         <x-common.download-toast show="exporting" cancel="cancelDownload()"
             :title="'exporting === \'pdf\' ? '.Js::from(__('nc.export.preparing', ['format' => __('nc.export.pdf')])).' : '.Js::from(__('nc.export.preparing', ['format' => __('nc.export.excel')]))" />
+
+        <x-main.non-conformities.photo-viewer />
 
         @if ($canManage)
             {{-- delete confirmation for one row or the ticked rows (confirmDelete → finding-delete) --}}

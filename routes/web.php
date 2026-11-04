@@ -58,10 +58,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/non-conformities/{finding}', [NonConfirmitiesController::class, 'update'])->name('non-conformities.update');
         Route::delete('/non-conformities/{finding}', [NonConfirmitiesController::class, 'destroy'])->name('non-conformities.destroy');
     });
-    // auditees may add the repair photo; the controller checks which photo each role may set
-    Route::post('/non-conformities/{finding}/photos/{field}', [FindingActionsController::class, 'photo'])
+    // auditees may add and remove repair photos; the controller checks which photos each role may change
+    Route::post('/non-conformities/{finding}/photos/{field}', [FindingActionsController::class, 'storePhotos'])
         ->whereIn('field', ['foto_temuan', 'foto_perbaikan'])
         ->name('non-conformities.photo');
+    Route::delete('/non-conformities/{finding}/photos/{photo}', [FindingActionsController::class, 'destroyPhoto'])
+        ->name('non-conformities.photo.destroy');
 
     // master data (admin and auditor)
     Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {

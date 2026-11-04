@@ -28,7 +28,8 @@ function exportedRows($response): array
 }
 
 test('excel export holds only the ticked columns, in the template order', function () {
-    NonConformity::factory()->open()->create(['pabrik' => 'ckp', 'deskripsi_temuan' => 'Kabel terkelupas', 'no_klausul' => '6.5.3', 'foto_temuan' => 'uploads/foto_temuan/hilang.jpg']);
+    NonConformity::factory()->open()->create(['pabrik' => 'ckp', 'deskripsi_temuan' => 'Kabel terkelupas', 'no_klausul' => '6.5.3'])
+        ->photos()->create(['field' => 'foto_temuan', 'path' => 'uploads/foto_temuan/hilang.jpg']);
 
     $response = $this->actingAs($this->auditor)
         ->get('/non-conformities/export?'.http_build_query(['format' => 'xlsx', 'columns' => ['status', 'elemen', 'deskripsi_temuan', 'foto_temuan']]));
@@ -42,24 +43,62 @@ test('excel export holds only the ticked columns, in the template order', functi
         ->and($rows[1])->toBe(['Kabel terkelupas', '-', 'Keamanan Bekerja Berdasarkan SMK3', __('nc.open')]);
 });
 
-test('photos are embedded in the excel cells', function () {
-    $photo = 'uploads/testing/foto-'.uniqid().'.jpg';
+test('the excel cell holds one representative photo, skipping photos whose file is missing', function () {
+    $photos = ['uploads/testing/foto-'.uniqid().'.jpg', 'uploads/testing/foto-'.uniqid().'.jpg'];
     @mkdir(public_path('uploads/testing'), 0777, true);
-    imagejpeg(imagecreatetruecolor(800, 600), public_path($photo));
+    foreach ($photos as $photo) {
+        imagejpeg(imagecreatetruecolor(800, 600), public_path($photo));
+    }
 
     try {
-        NonConformity::factory()->create(['pabrik' => 'ckp', 'foto_temuan' => $photo, 'foto_perbaikan' => null]);
+        $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+        foreach ($photos as $photo) {
+            $finding->photos()->create(['field' => 'foto_temuan', 'path' => $photo]);
+        }
+        $missingFirst = NonConformity::factory()->create(['pabrik' => 'ckp']);
+        $missingFirst->photos()->create(['field' => 'foto_temuan', 'path' => 'uploads/testing/hilang.jpg']);
+        $missingFirst->photos()->create(['field' => 'foto_temuan', 'path' => $photos[1]]);
 
         $sheet = exportedWorkbook($this->actingAs($this->auditor)
-            ->get('/non-conformities/export?'.http_build_query(['format' => 'xlsx', 'columns' => ['id', 'foto_temuan', 'foto_perbaikan']])))
+            ->get('/non-conformities/export?'.http_build_query(['format' => 'xlsx', 'columns' => ['id', 'foto_temuan', 'foto_perbaikan'], 'sort' => 'id'])))
             ->getSheet(1);
 
         $drawings = iterator_to_array($sheet->getDrawingCollection());
-        expect($drawings)->toHaveCount(1)
-            ->and($drawings[0]->getCoordinates())->toBe('B2')
+        expect(array_map(fn ($drawing) => $drawing->getCoordinates(), $drawings))->toBe(['B2', 'B3'])
             ->and($sheet->getCell('C2')->getValue())->toBe('-');
     } finally {
-        @unlink(public_path($photo));
+        foreach ($photos as $photo) {
+            @unlink(public_path($photo));
+        }
+    }
+});
+
+test('the pdf export holds one representative photo per field', function () {
+    $photos = ['uploads/testing/foto-'.uniqid().'.jpg', 'uploads/testing/foto-'.uniqid().'.jpg'];
+    @mkdir(public_path('uploads/testing'), 0777, true);
+    foreach ($photos as $photo) {
+        imagejpeg(imagecreatetruecolor(400, 300), public_path($photo));
+    }
+    $images = fn () => substr_count($this->actingAs($this->auditor)
+        ->get('/non-conformities/export?'.http_build_query(['format' => 'pdf', 'columns' => ['id', 'foto_temuan', 'foto_perbaikan']]))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->getContent(), '/Subtype /Image');
+
+    try {
+        $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+        // images in the file without any photo, such as the logo
+        $base = $images();
+
+        foreach ($photos as $photo) {
+            $finding->photos()->create(['field' => 'foto_perbaikan', 'path' => $photo]);
+        }
+
+        expect($images())->toBe($base + 1);
+    } finally {
+        foreach ($photos as $photo) {
+            @unlink(public_path($photo));
+        }
     }
 });
 

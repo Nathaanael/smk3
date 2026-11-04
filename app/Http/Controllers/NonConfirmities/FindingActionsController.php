@@ -4,6 +4,7 @@ namespace App\Http\Controllers\NonConfirmities;
 
 use App\Enums\Role;
 use App\Http\Controllers\Controller;
+use App\Models\FindingPhoto;
 use App\Models\NonConformity;
 use App\Services\FindingPhotos;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Actions taken from the findings table over AJAX: bulk status / delete on the
- * ticked rows, and uploading a photo straight into a photo cell.
+ * ticked rows, adding photos from a photo cell and removing one in the photo viewer.
  */
 class FindingActionsController extends Controller
 {
@@ -28,7 +29,7 @@ class FindingActionsController extends Controller
         ]);
 
         // ids the user cannot see are silently left out
-        $findings = NonConformity::visibleTo($request->user())->whereKey($validated['ids'])->get();
+        $findings = NonConformity::visibleTo($request->user())->with('photos')->whereKey($validated['ids'])->get();
 
         DB::transaction(function () use ($findings, $validated, $photos) {
             foreach ($findings as $finding) {
@@ -50,24 +51,41 @@ class FindingActionsController extends Controller
     }
 
     /**
-     * Upload (or replace) one photo of a finding from the table. Auditees may only add the
-     * repair photo of findings they can see; admins and auditors may set both.
+     * Add photos to a finding from the table. Auditees may only add repair photos to
+     * findings they can see; admins and auditors may add both.
      */
-    public function photo(Request $request, NonConformity $finding, string $field, FindingPhotos $photos): JsonResponse
+    public function storePhotos(Request $request, NonConformity $finding, string $field, FindingPhotos $photos): JsonResponse
     {
         abort_unless(in_array($field, FindingPhotos::FIELDS, true), 404);
-        abort_unless(NonConformity::visibleTo($request->user())->whereKey($finding->getKey())->exists(), 404);
-        abort_if($request->user()->otorisasi === Role::Auditee && $field !== 'foto_perbaikan', 403);
+        $this->authorizePhotoChange($request, $finding, $field);
 
-        $request->validate([
-            'photo' => ['required', 'image', 'max:10240', 'dimensions:max_width=10000,max_height=10000'],
-        ]);
+        $validated = $request->validate(
+            array_merge_recursive(['photos' => ['required']], FindingPhotos::rules('photos', $finding, $field)),
+            ['photos.max' => __('nc.create.photoLimit', ['max' => FindingPhotos::MAX_PER_FIELD])],
+        );
 
-        $photos->replace($finding, $field, $request->file('photo'));
+        $photos->add($finding, $field, $validated['photos']);
 
         return response()->json([
-            'message' => __('nc.photoSaved', ['id' => $finding->id]),
-            'url' => asset($finding->{$field}),
+            'message' => __('nc.photosSaved', ['count' => count($validated['photos']), 'id' => $finding->id]),
+            'count' => count($validated['photos']),
         ]);
+    }
+
+    /** Remove one photo, with the same rights as adding it. */
+    public function destroyPhoto(Request $request, NonConformity $finding, FindingPhoto $photo, FindingPhotos $photos): JsonResponse
+    {
+        abort_unless($photo->non_conformity_id === $finding->getKey(), 404);
+        $this->authorizePhotoChange($request, $finding, $photo->field);
+
+        $photos->delete($photo);
+
+        return response()->json(['message' => __('nc.photoDeleted', ['id' => $finding->id])]);
+    }
+
+    private function authorizePhotoChange(Request $request, NonConformity $finding, string $field): void
+    {
+        abort_unless(NonConformity::visibleTo($request->user())->whereKey($finding->getKey())->exists(), 404);
+        abort_if($request->user()->otorisasi === Role::Auditee && $field !== 'foto_perbaikan', 403);
     }
 }

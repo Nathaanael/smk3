@@ -141,7 +141,7 @@ class FindingExporter
             'columns' => $columns,
             'rows' => $findings->map(fn (NonConformity $finding) => array_map(
                 fn (string $key) => in_array($key, self::PHOTO_COLUMNS, true)
-                    ? $this->images->thumbnail($finding->{$key})
+                    ? $this->representativeThumbnail($finding, $key)
                     : $this->value($finding, $key, $lookups),
                 $columns,
             )),
@@ -339,7 +339,7 @@ class FindingExporter
                 $cell = Coordinate::stringFromColumnIndex($position + 1).$row;
 
                 if (in_array($key, self::PHOTO_COLUMNS, true)) {
-                    $thumbnail = $this->images->thumbnail($finding->{$key});
+                    $thumbnail = $this->representativeThumbnail($finding, $key);
                     if ($thumbnail) {
                         $drawing = new Drawing;
                         $drawing->setPath($thumbnail);
@@ -372,6 +372,22 @@ class FindingExporter
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($position + 1))->setWidth(self::COLUMNS[$key][1]);
         }
         $sheet->freezePane('A2');
+    }
+
+    /**
+     * Reports show one photo per field to stay small and quick to download:
+     * the oldest one whose file still exists, or null when there is none.
+     */
+    private function representativeThumbnail(NonConformity $finding, string $field): ?string
+    {
+        foreach ($finding->photosOf($field) as $photo) {
+            $thumbnail = $this->images->thumbnail($photo->path);
+            if ($thumbnail) {
+                return $thumbnail;
+            }
+        }
+
+        return null;
     }
 
     /** Template look: grey bold header, thin borders, centred and wrapped text. */

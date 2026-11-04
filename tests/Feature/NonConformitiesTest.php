@@ -4,6 +4,7 @@ use App\Enums\Role;
 use App\Models\NonConformity;
 use App\Models\Smk3Criterion;
 use App\Models\User;
+use App\Services\FindingPhotos;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -139,20 +140,38 @@ function findingPayload(array $overrides = []): array
     ], $overrides);
 }
 
-test('auditors can add a finding with a photo', function () {
+test('auditors can add a finding with several photos', function () {
     Storage::fake('uploads');
     $auditor = User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']);
 
     $this->actingAs($auditor)
-        ->post('/non-conformities', findingPayload(['foto_temuan' => UploadedFile::fake()->image('temuan.jpg')]))
+        ->post('/non-conformities', findingPayload(['foto_temuan' => [UploadedFile::fake()->image('temuan.jpg'), UploadedFile::fake()->image('temuan2.jpg')]]))
         ->assertRedirect(route('non-conformities'))
         ->assertSessionHas('success');
 
     $finding = NonConformity::sole();
+    $photos = $finding->photosOf('foto_temuan');
     expect($finding->deskripsi_temuan)->toBe('Panel listrik tidak tertutup')
         ->and($finding->status)->toBeFalse()
-        ->and($finding->foto_temuan)->toStartWith('uploads/foto_temuan/');
-    Storage::disk('uploads')->assertExists((string) str($finding->foto_temuan)->after('uploads/'));
+        ->and($photos)->toHaveCount(2)
+        ->and($photos[0]->path)->toStartWith('uploads/foto_temuan/');
+    Storage::disk('uploads')->assertExists((string) str($photos[0]->path)->after('uploads/'));
+});
+
+test('a new finding takes at most the maximum number of photos, and only images', function () {
+    Storage::fake('uploads');
+    $auditor = User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => 'ckp']);
+    $tooMany = array_map(fn (int $number) => UploadedFile::fake()->image("{$number}.jpg"), range(1, FindingPhotos::MAX_PER_FIELD + 1));
+
+    $this->actingAs($auditor)
+        ->post('/non-conformities', findingPayload(['foto_temuan' => $tooMany]))
+        ->assertSessionHasErrors(['foto_temuan' => __('nc.create.photoLimit', ['max' => FindingPhotos::MAX_PER_FIELD])]);
+
+    $this->actingAs($auditor)
+        ->post('/non-conformities', findingPayload(['foto_temuan' => [UploadedFile::fake()->create('catatan.pdf', 10, 'application/pdf')]]))
+        ->assertSessionHasErrors('foto_temuan.0');
+
+    expect(NonConformity::count())->toBe(0);
 });
 
 test('auditees cannot add findings', function () {

@@ -5,7 +5,7 @@
  * Column headers (buttons with data-sort) sort the list: asc → desc → back to the default order.
  *
  * Also handles the row actions: ticking rows for bulk open / closed / delete, deleting
- * one row, and uploading a photo straight into a photo cell.
+ * one row, and adding photos straight from a photo cell.
  *
  * Usage: x-data="nonConformityList({ url, filters, departments, bulkUrl, destroyUrl, photoUrl })"
  *   filters     – current query values (q, pabrik, departemen, kategori, status, dari, sampai, per_page, sort, dir)
@@ -197,21 +197,28 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
         this.pendingDelete = [];
     },
 
-    /** Upload a photo straight from a table cell, then reload the page of results. */
-    async uploadPhoto(id, field, event) {
-        const file = event.target.files?.[0];
+    /** Add photos straight from a table cell, then reload the page of results. */
+    async uploadPhotos(id, field, event) {
+        const files = [...event.target.files];
         event.target.value = '';
-        if (!file) return;
+        if (!files.length) return;
 
         const key = `${id}.${field}`;
         const data = new FormData();
-        data.append('photo', file);
+        files.forEach((file) => data.append('photos[]', file));
         this.uploading[key] = true;
         try {
             await this.send(() => window.axios.post(photoUrl.replace(':id', id).replace(':field', field), data));
         } finally {
             delete this.uploading[key];
         }
+    },
+
+    /** A photo was removed in the viewer modal: its cell shows one photo less. */
+    onPhotosChanged({ message }) {
+        this.notice = message ?? '';
+        this.error = '';
+        this.load();
     },
 
     get allExportColumns() {

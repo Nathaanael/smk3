@@ -1,6 +1,6 @@
 {{--
     Findings table. With canManage (admin, auditor) rows get a checkbox for bulk actions and an
-    edit / delete column; everyone who sees a row may upload its repair photo. Column headers
+    edit / delete column; everyone who sees a row may add repair photos. Column headers
     sort the list (sort / dir: the current order, see FindingFilterRequest::SORTABLE).
 
     Only the table scrolls (both ways, header stays on top). The wrapper is `relative` so the
@@ -12,12 +12,6 @@
     $cellClass = 'px-4 py-3 text-sm text-gray-700 dark:text-gray-400';
     $checkboxClass = 'size-4 cursor-pointer rounded border-gray-300 accent-brand-500 dark:border-gray-700';
     $columns = 10 + ($showPlant ? 1 : 0) + ($canManage ? 2 : 0);
-    $categoryColor = fn (?string $category) => match ($category) {
-        'Kritis' => 'error',
-        'Major' => 'warning',
-        'Minor' => 'info',
-        default => 'gray',
-    };
 @endphp
 <div {{ $attributes->merge(['class' => 'custom-scrollbar relative max-h-[70vh] max-w-full overflow-auto']) }}>
     <table class="min-w-full">
@@ -51,6 +45,7 @@
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             @forelse ($findings as $finding)
                 <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-white/2"
+                    @if ($finding->photos->isNotEmpty()) data-photo-viewer="{{ json_encode($finding->photoViewerData($canManage)) }}" @endif
                     @if ($canManage) x-bind:class="selected.includes('{{ $finding->id }}') && 'bg-brand-50/60 hover:bg-brand-50 dark:bg-brand-500/5 dark:hover:bg-brand-500/10'" @endif>
                     @if ($canManage)
                         <td class="px-4 py-3">
@@ -68,12 +63,12 @@
                         <p class="line-clamp-2" title="{{ $finding->deskripsi_temuan }}">{{ $finding->deskripsi_temuan }}</p>
                     </td>
                     <td class="{{ $cellClass }}">
-                        <x-main.non-conformities.photo :path="$finding->foto_temuan" :finding-id="$finding->id" field="foto_temuan" :can-upload="$canManage" />
+                        <x-main.non-conformities.photo :count="$finding->photosOf('foto_temuan')->count()" :finding-id="$finding->id" field="foto_temuan" :can-upload="$canManage" />
                     </td>
                     <td class="{{ $cellClass }} whitespace-nowrap">{{ $finding->no_klausul ?? '—' }}</td>
                     <td class="{{ $cellClass }}">
                         @if ($finding->kategori)
-                            <x-ui.badge size="sm" :color="$categoryColor($finding->kategori)">{{ $finding->kategori }}</x-ui.badge>
+                            <x-ui.badge size="sm" :color="$finding->categoryColor()">{{ $finding->kategori }}</x-ui.badge>
                         @else
                             —
                         @endif
@@ -87,7 +82,7 @@
                         @endif
                     </td>
                     <td class="{{ $cellClass }}">
-                        <x-main.non-conformities.photo :path="$finding->foto_perbaikan" :finding-id="$finding->id" field="foto_perbaikan" can-upload />
+                        <x-main.non-conformities.photo :count="$finding->photosOf('foto_perbaikan')->count()" :finding-id="$finding->id" field="foto_perbaikan" can-upload />
                     </td>
                     <td class="{{ $cellClass }}">
                         @if ($finding->isClosed())

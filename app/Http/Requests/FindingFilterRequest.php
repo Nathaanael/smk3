@@ -74,7 +74,7 @@ class FindingFilterRequest extends FormRequest
         $filters = $this->validated();
 
         return NonConformity::query()
-            ->with('picUser:id,name,email')
+            ->with(['picUser:id,name,email', 'photos'])
             ->visibleTo($this->user())
             ->when($filters['pabrik'] ?? null, fn ($query, $plant) => $query->where('pabrik', $plant))
             ->when($filters['departemen'] ?? null, fn ($query, $department) => $query->where('departemen', $department))

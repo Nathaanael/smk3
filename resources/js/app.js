@@ -8,6 +8,7 @@ import initCharts from "./components/chart";
 import nonConformityList from "./components/non-conformities/list";
 import progressMonitor from "./components/progress-monitoring/monitor";
 import findingForm from "./components/non-conformities/create";
+import findingPhotoViewer from "./components/non-conformities/photo-viewer";
 import clauseMaster from "./components/master/clauses";
 import accountMaster from "./components/master/accounts";
 import registerUi from "./ui";
@@ -66,6 +67,7 @@ registerUi(Alpine);
 Alpine.data("nonConformityList", nonConformityList);
 Alpine.data("progressMonitor", progressMonitor);
 Alpine.data("findingForm", findingForm);
+Alpine.data("findingPhotoViewer", findingPhotoViewer);
 Alpine.data("clauseMaster", clauseMaster);
 Alpine.data("accountMaster", accountMaster);
 

@@ -1,15 +1,16 @@
 /**
  * "Add finding" page: plant → department → PIC options, clause suggestions while the
  * description is typed, categories limited to those ticked for the chosen clause,
- * photo preview, and a warning before leaving with unsaved input.
+ * previews of the chosen photos, and a warning before leaving with unsaved input.
  *
- * Usage: x-data="findingForm({ departments, auditees, clauses, categories, suggestUrl, values })"
+ * Usage: x-data="findingForm({ departments, auditees, clauses, categories, suggestUrl, values, viewer, maxPhotos, photoLimitMessage })"
  *   departments – { plant: { code: name } }
  *   auditees    – [{ name, email, plants: [], departments: [] }]
  *   clauses     – { "6.7.7": { text, categories: ['Minor', ...] } }
  *   values      – initial values (old input after a failed save, or the kept date/plant/department)
+ *   viewer      – NonConformity::photoViewerData() of the finding being edited, else null
  */
-export default ({ departments = {}, auditees = [], clauses = {}, categories = [], suggestUrl, values = {} }) => ({
+export default ({ departments = {}, auditees = [], clauses = {}, categories = [], suggestUrl, values = {}, viewer = null, maxPhotos = 10, photoLimitMessage = '' }) => ({
     departments,
     auditees,
     clauses,
@@ -23,8 +24,12 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
     suggestions: [],
     suggesting: false,
     suggestController: null,
-    photoUrl: null,
-    photoName: '',
+    // photos already stored on the finding being edited; the viewer modal removes from this object
+    viewer,
+    maxPhotos,
+    photoLimitMessage,
+    chosenPhotos: { foto_temuan: [], foto_perbaikan: [] },
+    photoNotice: { foto_temuan: '', foto_perbaikan: '' },
     submitting: false,
     initial: '',
 
@@ -45,7 +50,11 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
 
     /** Something was changed since the page was opened. */
     get dirty() {
-        return this.snapshot() !== this.initial || Boolean(this.photoName);
+        return this.snapshot() !== this.initial || this.hasChosenPhotos;
+    },
+
+    get hasChosenPhotos() {
+        return Object.values(this.chosenPhotos).some((photos) => photos.length > 0);
     },
 
     snapshot() {
@@ -105,17 +114,28 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
         }
     },
 
-    choosePhoto(event) {
-        const file = event.target.files?.[0];
-        if (this.photoUrl) URL.revokeObjectURL(this.photoUrl);
-        this.photoUrl = file ? URL.createObjectURL(file) : null;
-        this.photoName = file?.name ?? '';
+    /** Add the picked files to the ones chosen earlier (a file input would drop those), up to the limit. */
+    choosePhotos(field, event) {
+        const stored = this.viewer?.photos[field].length ?? 0;
+        const room = Math.max(0, this.maxPhotos - stored - this.chosenPhotos[field].length);
+        const picked = [...event.target.files];
+
+        this.photoNotice[field] = picked.length > room ? this.photoLimitMessage : '';
+        picked.slice(0, room).forEach((file) => this.chosenPhotos[field].push({ file, url: URL.createObjectURL(file) }));
+        this.syncPhotoInput(field);
     },
 
-    clearPhoto() {
-        if (this.photoUrl) URL.revokeObjectURL(this.photoUrl);
-        this.photoUrl = null;
-        this.photoName = '';
-        this.$refs.photo.value = '';
+    removeChosenPhoto(field, position) {
+        const [photo] = this.chosenPhotos[field].splice(position, 1);
+        URL.revokeObjectURL(photo.url);
+        this.photoNotice[field] = '';
+        this.syncPhotoInput(field);
+    },
+
+    /** The input is what gets submitted, so it must hold exactly the chosen files. */
+    syncPhotoInput(field) {
+        const files = new DataTransfer();
+        this.chosenPhotos[field].forEach((photo) => files.items.add(photo.file));
+        this.$refs[field].files = files.files;
     },
 });

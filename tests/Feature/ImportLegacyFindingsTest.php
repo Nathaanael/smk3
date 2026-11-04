@@ -39,11 +39,12 @@ test('legacy findings are imported with their ids and compressed photos', functi
 
     expect($closed->status)->toBeTrue()
         ->and($closed->deskripsi_temuan)->toBe("Kabel terkelupas, 'segera' diganti")
-        ->and($closed->foto_temuan)->toStartWith('uploads/foto_temuan/')->toEndWith('.jpg')
+        ->and($closed->photosOf('foto_temuan'))->toHaveCount(1)
+        ->and($closed->photosOf('foto_temuan')[0]->path)->toStartWith('uploads/foto_temuan/')->toEndWith('.jpg')
         ->and($open->status)->toBeFalse()
-        ->and($open->foto_temuan)->toBeNull();
+        ->and($open->photos)->toBeEmpty();
 
-    [$width] = getimagesizefromstring(Storage::disk('uploads')->get(str($closed->foto_temuan)->after('uploads/')));
+    [$width] = getimagesizefromstring(Storage::disk('uploads')->get(str($closed->photosOf('foto_temuan')[0]->path)->after('uploads/')));
     expect($width)->toBe(1600);
 });
 
