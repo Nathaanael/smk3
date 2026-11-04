@@ -19,7 +19,7 @@ use Illuminate\View\View;
 
 class NonConfirmitiesController extends Controller
 {
-    public function index(FindingFilterRequest $request): View|string
+    public function index(FindingFilterRequest $request): View|string|RedirectResponse
     {
         $plants = $request->user()->accessiblePlants();
         $filters = $request->validated();
@@ -27,6 +27,13 @@ class NonConfirmitiesController extends Controller
         $findings = $request->findings()
             ->paginate($filters['per_page'] ?? FindingFilterRequest::PER_PAGE_OPTIONS[0])
             ->withQueryString();
+
+        // back on a remembered page that no longer exists (its findings were deleted or changed)
+        if ($findings->isEmpty() && $findings->currentPage() > 1 && ! $request->hasHeader('X-Partial')) {
+            $request->session()->reflash();
+
+            return redirect()->route('non-conformities', ['page' => $findings->lastPage()] + $request->query());
+        }
 
         // AJAX search/filter/pagination only needs the results part of the page
         return view('pages.nonConfirmities.index', [

@@ -16,8 +16,8 @@ class FindingPhotos
 {
     public const FIELDS = ['foto_temuan', 'foto_perbaikan'];
 
-    /** Most photos one finding may hold per field. */
-    public const MAX_PER_FIELD = 10;
+    /** Most photos one finding may hold per field; photos stored before this limit stay. */
+    public const MAX_PER_FIELD = 5;
 
     public function __construct(private ImageCompressor $images) {}
 

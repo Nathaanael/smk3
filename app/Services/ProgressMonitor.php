@@ -76,13 +76,19 @@ class ProgressMonitor
 
     /**
      * @param  Collection<int, NonConformity>  $findings
-     * @return array<string, int|float>
+     * @return array<string, mixed>
      */
     private function counts(Collection $findings): array
     {
         $total = $findings->count();
         $closed = $findings->filter(fn (NonConformity $finding) => $finding->isClosed())->count();
         $minors = $findings->where('kategori', 'Minor');
+
+        // clauses found as Minor often enough in one department to count as a Major
+        $repeated = $minors
+            ->filter(fn (NonConformity $finding) => filled($finding->no_klausul))
+            ->groupBy(fn (NonConformity $finding) => strtoupper((string) $finding->departemen).'|'.$finding->no_klausul)
+            ->filter(fn (Collection $group) => $group->count() >= self::MINOR_TO_MAJOR);
 
         return [
             'total' => $total,
@@ -92,12 +98,12 @@ class ProgressMonitor
             'minor' => $minors->count(),
             'major' => $findings->where('kategori', 'Major')->count(),
             'kritis' => $findings->where('kategori', 'Kritis')->count(),
-            // clauses found as Minor often enough in one department to count as a Major
-            'converted_major' => $minors
-                ->filter(fn (NonConformity $finding) => filled($finding->no_klausul))
-                ->groupBy(fn (NonConformity $finding) => strtoupper((string) $finding->departemen).'|'.$finding->no_klausul)
-                ->filter(fn (Collection $group) => $group->count() >= self::MINOR_TO_MAJOR)
-                ->count(),
+            'converted_major' => $repeated->count(),
+            'converted_clauses' => $repeated
+                ->map(fn (Collection $group) => ['clause' => $group->first()->no_klausul, 'count' => $group->count()])
+                ->sortByDesc('count')
+                ->values()
+                ->all(),
         ];
     }
 }

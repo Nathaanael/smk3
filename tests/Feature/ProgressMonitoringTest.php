@@ -56,6 +56,40 @@ test('the recap scores each department like the legacy dashboard', function () {
     expect($recap['total'])->toMatchArray(['total' => 8, 'closed' => 4, 'open' => 4, 'minor' => 6, 'major' => 1, 'kritis' => 1]);
 });
 
+test('the recap lists which clauses make up the extra Major, the most repeated first', function () {
+    finding('OIL', 'Minor', clause: '6.4.3');
+    finding('OIL', 'Minor', clause: '6.4.3');
+    foreach (range(1, 3) as $time) {
+        finding('OIL', 'Minor', clause: '6.1.2');
+    }
+    finding('OIL', 'Minor', clause: '7.1.1');
+    // the same clause in another department does not add up
+    finding('BMB', 'Minor', clause: '6.1.2');
+
+    $row = recapRow(app(ProgressMonitor::class)->recap('ckp', null, null), 'OIL');
+
+    expect($row['converted_major'])->toBe(2)
+        ->and($row['converted_clauses'])->toBe([['clause' => '6.1.2', 'count' => 3], ['clause' => '6.4.3', 'count' => 2]]);
+});
+
+test('the info icon explains the extra Major, also after an ajax reload', function (array $headers) {
+    finding('OIL', 'Minor', clause: '6.1.2');
+    finding('OIL', 'Minor', clause: '6.1.2');
+
+    $response = $this->actingAs(User::factory()->admin()->create())
+        ->get('/progress-monitoring?pabrik=ckp', $headers)
+        ->assertOk()
+        ->assertSee(__('pm.convertedMajorHelp'))
+        ->assertSee(__('pm.convertedMajorInfo', ['min' => ProgressMonitor::MINOR_TO_MAJOR]))
+        ->assertSee(__('pm.convertedMajorTimes', ['count' => 2]));
+
+    // once for the one department with a repeated clause, not for the others or the total row
+    expect(substr_count($response->getContent(), 'aria-label="'.__('pm.convertedMajorHelp').'"'))->toBe(1);
+})->with([
+    'full page' => [[]],
+    'ajax' => [['X-Partial' => 'results']],
+]);
+
 test('the recap only counts findings of the plant and period', function () {
     finding('OIL', 'Minor');
     finding('OIL', 'Minor', plant: 'psr');

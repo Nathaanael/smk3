@@ -65,8 +65,8 @@
                     <td class="{{ $cellClass }}">
                         {{ $row['major'] }}
                         @if ($row['converted_major'])
-                            <span class="ms-0.5 text-theme-xs font-medium text-warning-600 dark:text-warning-400"
-                                title="{{ __('pm.convertedMajor', ['count' => $row['converted_major'], 'min' => ProgressMonitor::MINOR_TO_MAJOR]) }}">+{{ $row['converted_major'] }}</span>
+                            <span class="ms-0.5 text-theme-xs font-medium text-warning-600 dark:text-warning-400">+{{ $row['converted_major'] }}</span>
+                            <x-main.progress-monitoring.converted-major-info :clauses="$row['converted_clauses']" />
                         @endif
                     </td>
                     <td class="{{ $cellClass }}">{{ $row['kritis'] }}</td>

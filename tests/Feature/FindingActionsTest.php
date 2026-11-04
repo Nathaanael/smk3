@@ -148,6 +148,24 @@ test('a field holds at most the maximum number of photos', function () {
     expect($finding->fresh()->photosOf('foto_temuan'))->toHaveCount(FindingPhotos::MAX_PER_FIELD);
 });
 
+test('the limit is 5 photos per field, and photos stored before it stay', function () {
+    expect(FindingPhotos::MAX_PER_FIELD)->toBe(5);
+
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    foreach (range(1, 7) as $number) {
+        storedPhoto($finding, 'foto_perbaikan', "{$number}.jpg");
+    }
+
+    // nothing is removed, but no more can be added until it is below the limit
+    $this->actingAs($this->auditor)
+        ->post("/non-conformities/{$finding->id}/photos/foto_perbaikan", ['photos' => [UploadedFile::fake()->image('a.jpg')]], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['photos' => __('nc.create.photoLimit', ['max' => 5])]);
+
+    expect($finding->fresh()->photosOf('foto_perbaikan'))->toHaveCount(7);
+    $this->get('/non-conformities')->assertOk();
+});
+
 test('adding photos needs at least one image', function () {
     $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
     $url = "/non-conformities/{$finding->id}/photos/foto_temuan";

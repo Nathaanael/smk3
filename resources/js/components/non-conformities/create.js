@@ -10,7 +10,7 @@
  *   values      – initial values (old input after a failed save, or the kept date/plant/department)
  *   viewer      – NonConformity::photoViewerData() of the finding being edited, else null
  */
-export default ({ departments = {}, auditees = [], clauses = {}, categories = [], suggestUrl, values = {}, viewer = null, maxPhotos = 10, photoLimitMessage = '' }) => ({
+export default ({ departments = {}, auditees = [], clauses = {}, categories = [], suggestUrl, values = {}, viewer = null, maxPhotos = 5, photoLimitMessage = '' }) => ({
     departments,
     auditees,
     clauses,

@@ -37,9 +37,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/dashboard', fn () => redirect()->route('dashboard.index', status: 301));
 
     // SMK3 pages (all roles)
-    Route::get('/progress-monitoring', [ProgressMonitoringController::class, 'index'])->name('progress-monitoring');
+    Route::get('/progress-monitoring', [ProgressMonitoringController::class, 'index'])->middleware('remember.filters')->name('progress-monitoring');
 
-    Route::get('/non-conformities', [NonConfirmitiesController::class, 'index'])->name('non-conformities');
+    Route::get('/non-conformities', [NonConfirmitiesController::class, 'index'])->middleware('remember.filters')->name('non-conformities');
     Route::get('/non-conformities/create', [NonConfirmitiesController::class, 'create'])
         ->middleware('role:admin,auditor')
         ->name('non-conformities.create');
@@ -67,7 +67,7 @@ Route::middleware('auth')->group(function () {
 
     // master data (admin and auditor)
     Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {
-        Route::get('/clauses', [ClauseController::class, 'index'])->name('clauses');
+        Route::get('/clauses', [ClauseController::class, 'index'])->middleware('remember.filters')->name('clauses');
         Route::post('/clauses', [ClauseController::class, 'store'])->name('clauses.store');
         Route::get('/clauses/template', [ClauseController::class, 'template'])->name('clauses.template');
         Route::post('/clauses/import', [ClauseController::class, 'import'])->name('clauses.import');

@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'remember.filters' => \App\Http\Middleware\RememberListFilters::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

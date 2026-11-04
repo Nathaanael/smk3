@@ -63,6 +63,7 @@
                     {{ __('pm.guide.colorPoor') }}
                 </li>
             </ul>
+            <p class="mt-3 text-theme-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ __('pm.guide.colorsNote') }}</p>
         </div>
 
         <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
