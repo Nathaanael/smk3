@@ -41,6 +41,12 @@
                         {{ __('nc.create.button') }}
                     </x-ui.button>
 
+                    {{-- rows can only be ticked after this button, so a stray click on a row does nothing --}}
+                    <x-ui.button variant="outline" x-on:click="toggleSelecting()" x-bind:aria-pressed="selecting">
+                        <span x-show="!selecting">{{ __('nc.bulk.choose') }}</span>
+                        <span x-show="selecting" x-cloak>{{ __('nc.bulk.cancelChoose') }}</span>
+                    </x-ui.button>
+
                     {{-- bulk actions on the ticked rows of this page --}}
                     <x-ui.dropdown-menu>
                         <x-ui.dropdown-menu.trigger as-child>
@@ -85,6 +91,19 @@
         </div>
 
         <x-main.non-conformities.filters class="px-5 py-5 sm:px-6" :filters="$filters" :plants="$plants" :categories="$categories" />
+
+        @if ($canManage)
+            <div class="mx-5 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-brand-50 px-4 py-3 text-sm text-gray-700 sm:mx-6 dark:bg-brand-500/10 dark:text-gray-300"
+                x-show="selecting" x-cloak role="status">
+                <span>{{ __('nc.bulk.hint') }}</span>
+                <span class="font-semibold text-gray-800 dark:text-white/90"><span x-text="selected.length"></span> {{ __('nc.bulk.selectedLabel') }}</span>
+                <button type="button" class="ms-auto font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50 dark:text-brand-400 dark:hover:text-brand-300"
+                    x-on:click="toggleAll(!allSelected)" x-bind:disabled="!pageIds.length">
+                    <span x-show="!allSelected">{{ __('nc.bulk.selectAll') }}</span>
+                    <span x-show="allSelected" x-cloak>{{ __('nc.bulk.clearAll') }}</span>
+                </button>
+            </div>
+        @endif
 
         <div x-ref="results" x-on:click="onResultsClick($event)" x-on:change="onResultsChange($event)"
             x-bind:aria-busy="loading || busy" x-bind:class="(loading || busy) && 'pointer-events-none opacity-60'" class="transition-opacity">

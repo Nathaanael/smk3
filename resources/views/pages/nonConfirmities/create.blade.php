@@ -26,8 +26,8 @@
             values: @js((object) $values),
             viewer: @js($finding?->photoViewerData(true)),
             maxPhotos: @js(\App\Services\FindingPhotos::MAX_PER_FIELD),
-            photoLimitMessage: @js(__('nc.create.photoLimit', ['max' => \App\Services\FindingPhotos::MAX_PER_FIELD])),
         })"
+        x-on:finding-photos-changed.window="ensurePhotoSlots()"
         x-on:submit="submitting ? $event.preventDefault() : (submitting = true)">
         @csrf
         @if ($finding)

@@ -1288,6 +1288,48 @@ pre[class*='language-'] {
   background-color: #344054;
 }
 
+/* Wide tables: a scrollbar big and visible enough to drag with a mouse */
+@utility table-scrollbar {
+  &::-webkit-scrollbar {
+    @apply size-3.5;
+  }
+
+  &::-webkit-scrollbar-track,
+  &::-webkit-scrollbar-corner {
+    @apply bg-gray-100;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-gray-400 hover:bg-gray-500 active:bg-gray-600;
+  }
+
+  /* Firefox has no ::-webkit-scrollbar; setting this for Chrome too would switch off the rules above */
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-gray-400) var(--color-gray-100);
+  }
+}
+
+/* dark: inside a pseudo-element compiles to an empty :is(), so dark mode is written out */
+.dark .table-scrollbar::-webkit-scrollbar-track,
+.dark .table-scrollbar::-webkit-scrollbar-corner {
+  background-color: var(--color-gray-800);
+}
+.dark .table-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-gray-600);
+}
+.dark .table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-gray-500);
+}
+.dark .table-scrollbar::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-gray-400);
+}
+@supports not selector(::-webkit-scrollbar) {
+  .dark .table-scrollbar {
+    scrollbar-color: var(--color-gray-600) var(--color-gray-800);
+  }
+}
+
 .api-token-chart .apexcharts-tooltip {
     border: 0 !important;
     background: transparent !important;

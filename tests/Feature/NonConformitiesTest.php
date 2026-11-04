@@ -122,6 +122,45 @@ test('an empty state is shown when nothing matches', function () {
         ->assertSee(__('nc.empty'));
 });
 
+test('only admins and auditors get the choose button and selectable rows', function (Role $role, bool $can) {
+    $user = User::factory()->create(['otorisasi' => $role, 'pabrik' => 'ckp', 'departemen' => 'OIL']);
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp', 'departemen' => 'OIL']);
+
+    $response = $this->actingAs($user)->get('/non-conformities')->assertOk();
+
+    $expected = [__('nc.bulk.choose'), __('nc.bulk.hint'), 'toggleSelecting()', "data-row-id=\"{$finding->id}\""];
+    $can ? $response->assertSee($expected, false) : $response->assertDontSee(['toggleSelecting()', __('nc.bulk.hint'), 'data-row-id='], false);
+})->with([
+    'admin' => [Role::Admin, true],
+    'auditor' => [Role::Auditor, true],
+    'auditee' => [Role::Auditee, false],
+]);
+
+test('rows and their checkboxes start hidden from selection and survive an ajax reload', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get('/non-conformities', ['X-Partial' => 'results'])
+        ->assertOk()
+        ->assertSee("data-row-id=\"{$finding->id}\"", false)
+        ->assertSee('x-show="selecting"', false);
+});
+
+test('the form has one file input per photo, named only once it holds a file', function () {
+    $finding = NonConformity::factory()->create(['pabrik' => 'ckp']);
+    $this->actingAs(User::factory()->admin()->create());
+
+    $this->get('/non-conformities/create')->assertOk()
+        ->assertSee('in photoSlots.foto_temuan', false)
+        ->assertSee('x-bind:name', false)
+        ->assertDontSee('in photoSlots.foto_perbaikan', false)
+        ->assertDontSee('name="foto_temuan[]"', false);
+
+    $this->get("/non-conformities/{$finding->id}/edit")->assertOk()
+        ->assertSee('in photoSlots.foto_temuan', false)
+        ->assertSee('in photoSlots.foto_perbaikan', false);
+});
+
 function findingPayload(array $overrides = []): array
 {
     $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'pabrik' => 'ckp', 'departemen' => 'TEKNIK,QC']);

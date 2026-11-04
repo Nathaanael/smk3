@@ -31,6 +31,8 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
     // format being prepared ('xlsx' / 'pdf'), shown in the loading toast
     exporting: null,
     exportController: null,
+    // "Choose" mode: only then a row click selects, so a stray click cannot tick anything
+    selecting: false,
     // ticked rows of the current page (ids as strings, like checkbox values)
     selected: [],
     pageIds: [],
@@ -145,9 +147,32 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
         }
 
         const link = event.target.closest('a[data-slot="pagination-link"]');
-        if (!link) return;
-        event.preventDefault();
-        if (link.getAttribute('aria-disabled') !== 'true') this.goTo(link.href);
+        if (link) {
+            event.preventDefault();
+            if (link.getAttribute('aria-disabled') !== 'true') this.goTo(link.href);
+            return;
+        }
+
+        this.selectRow(event);
+    },
+
+    /** In "Choose" mode a click on a row ticks it, unless it hit a control in the row or ended a text selection. */
+    selectRow(event) {
+        if (!this.selecting || event.target.closest('a, button, input, label, select, textarea')) return;
+        if (window.getSelection()?.toString()) return;
+
+        const id = event.target.closest('tr[data-row-id]')?.dataset.rowId;
+        if (!id) return;
+        this.selected = this.selected.includes(id) ? this.selected.filter((value) => value !== id) : [...this.selected, id];
+    },
+
+    /** Leaving "Choose" mode drops the ticks, so nothing stays selected out of sight. */
+    toggleSelecting() {
+        this.selecting = !this.selecting;
+        if (!this.selecting) {
+            this.selected = [];
+            this.exportSelectedOnly = false;
+        }
     },
 
     onResultsChange(event) {
@@ -178,6 +203,8 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
     async bulk(action, ids = this.selected) {
         if (!ids.length || this.busy) return;
         await this.send(() => window.axios.post(bulkUrl, { action, ids }));
+        // done: back to normal, so the next click on a row does nothing. After an error the ticks stay.
+        if (!this.error && this.selecting) this.toggleSelecting();
     },
 
     /** Ask for confirmation before deleting the given ids (one row, or the ticked rows). */
@@ -191,6 +218,7 @@ export default ({ url, filters = {}, departments = {}, bulkUrl = null, destroyUr
         const ids = this.pendingDelete;
         if (ids.length === 1) {
             await this.send(() => window.axios.delete(destroyUrl.replace(':id', ids[0])));
+            if (!this.error && this.selecting) this.toggleSelecting();
         } else {
             await this.bulk('delete', ids);
         }

@@ -1,6 +1,7 @@
 {{--
-    Findings table. With canManage (admin, auditor) rows get a checkbox for bulk actions and an
-    edit / delete column; everyone who sees a row may add repair photos. Column headers
+    Findings table. With canManage (admin, auditor) rows get an edit / delete column and, in
+    "Choose" mode (nonConformityList.selecting), a checkbox for bulk actions; a click on the
+    row ticks it too. Everyone who sees a row may add repair photos. Column headers
     sort the list (sort / dir: the current order, see FindingFilterRequest::SORTABLE).
 
     Only the table scrolls (both ways, header stays on top). The wrapper is `relative` so the
@@ -13,12 +14,12 @@
     $checkboxClass = 'size-4 cursor-pointer rounded border-gray-300 accent-brand-500 dark:border-gray-700';
     $columns = 10 + ($showPlant ? 1 : 0) + ($canManage ? 2 : 0);
 @endphp
-<div {{ $attributes->merge(['class' => 'custom-scrollbar relative max-h-[70vh] max-w-full overflow-auto']) }}>
+<div {{ $attributes->merge(['class' => 'table-scrollbar relative max-h-[70vh] max-w-full overflow-auto']) }}>
     <table class="min-w-full">
         <thead class="sticky top-0 z-1 border-y border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
             <tr>
                 @if ($canManage)
-                    <th class="w-10 px-4 py-3">
+                    <th class="w-10 px-4 py-3" x-show="selecting" x-cloak>
                         <input type="checkbox" class="{{ $checkboxClass }}" aria-label="{{ __('nc.bulk.selectAll') }}"
                             x-bind:checked="allSelected" x-bind:indeterminate="someSelected" x-bind:disabled="!pageIds.length"
                             x-on:change="toggleAll($event.target.checked)">
@@ -44,11 +45,17 @@
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             @forelse ($findings as $finding)
-                <tr class="transition-colors hover:bg-gray-50 dark:hover:bg-white/2"
+                <tr class="transition-colors"
                     @if ($finding->photos->isNotEmpty()) data-photo-viewer="{{ json_encode($finding->photoViewerData($canManage)) }}" @endif
-                    @if ($canManage) x-bind:class="selected.includes('{{ $finding->id }}') && 'bg-brand-50/60 hover:bg-brand-50 dark:bg-brand-500/5 dark:hover:bg-brand-500/10'" @endif>
                     @if ($canManage)
-                        <td class="px-4 py-3">
+                        data-row-id="{{ $finding->id }}"
+                        x-bind:class="{
+                            'cursor-pointer': selecting,
+                            'bg-brand-50/60 dark:bg-brand-500/5': selected.includes('{{ $finding->id }}'),
+                        }"
+                    @endif>
+                    @if ($canManage)
+                        <td class="px-4 py-3" x-show="selecting" x-cloak>
                             <input type="checkbox" class="{{ $checkboxClass }}" value="{{ $finding->id }}" x-model="selected"
                                 aria-label="{{ __('nc.bulk.select', ['id' => $finding->id]) }}">
                         </td>

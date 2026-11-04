@@ -3,14 +3,16 @@
  * description is typed, categories limited to those ticked for the chosen clause,
  * previews of the chosen photos, and a warning before leaving with unsaved input.
  *
- * Usage: x-data="findingForm({ departments, auditees, clauses, categories, suggestUrl, values, viewer, maxPhotos, photoLimitMessage })"
+ * Usage: x-data="findingForm({ departments, auditees, clauses, categories, suggestUrl, values, viewer, maxPhotos })"
  *   departments – { plant: { code: name } }
  *   auditees    – [{ name, email, plants: [], departments: [] }]
  *   clauses     – { "6.7.7": { text, categories: ['Minor', ...] } }
  *   values      – initial values (old input after a failed save, or the kept date/plant/department)
  *   viewer      – NonConformity::photoViewerData() of the finding being edited, else null
  */
-export default ({ departments = {}, auditees = [], clauses = {}, categories = [], suggestUrl, values = {}, viewer = null, maxPhotos = 5, photoLimitMessage = '' }) => ({
+let photoSlotId = 0;
+
+export default ({ departments = {}, auditees = [], clauses = {}, categories = [], suggestUrl, values = {}, viewer = null, maxPhotos = 5 }) => ({
     departments,
     auditees,
     clauses,
@@ -27,9 +29,8 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
     // photos already stored on the finding being edited; the viewer modal removes from this object
     viewer,
     maxPhotos,
-    photoLimitMessage,
-    chosenPhotos: { foto_temuan: [], foto_perbaikan: [] },
-    photoNotice: { foto_temuan: '', foto_perbaikan: '' },
+    // one file input per photo: { id, url } with url set once a file is chosen
+    photoSlots: { foto_temuan: [], foto_perbaikan: [] },
     submitting: false,
     initial: '',
 
@@ -37,6 +38,7 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
         // what the form started with (empty, kept values, or the finding being edited)
         this.initial = this.snapshot();
         if (this.description) this.loadSuggestions();
+        this.ensurePhotoSlots();
 
         // a category that does not apply to the newly chosen clause is cleared
         this.$watch('clause', () => {
@@ -54,7 +56,7 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
     },
 
     get hasChosenPhotos() {
-        return Object.values(this.chosenPhotos).some((photos) => photos.length > 0);
+        return Object.values(this.photoSlots).some((slots) => slots.some((slot) => slot.url));
     },
 
     snapshot() {
@@ -114,28 +116,30 @@ export default ({ departments = {}, auditees = [], clauses = {}, categories = []
         }
     },
 
-    /** Add the picked files to the ones chosen earlier (a file input would drop those), up to the limit. */
-    choosePhotos(field, event) {
-        const stored = this.viewer?.photos[field].length ?? 0;
-        const room = Math.max(0, this.maxPhotos - stored - this.chosenPhotos[field].length);
-        const picked = [...event.target.files];
-
-        this.photoNotice[field] = picked.length > room ? this.photoLimitMessage : '';
-        picked.slice(0, room).forEach((file) => this.chosenPhotos[field].push({ file, url: URL.createObjectURL(file) }));
-        this.syncPhotoInput(field);
+    /** Keep one empty input below the chosen photos, as long as the field has room for another. */
+    ensurePhotoSlots() {
+        Object.entries(this.photoSlots).forEach(([field, slots]) => {
+            const stored = this.viewer?.photos[field].length ?? 0;
+            const hasEmpty = slots.some((slot) => !slot.url);
+            if (!hasEmpty && stored + slots.length < this.maxPhotos) slots.push({ id: ++photoSlotId, url: null });
+        });
     },
 
-    removeChosenPhoto(field, position) {
-        const [photo] = this.chosenPhotos[field].splice(position, 1);
-        URL.revokeObjectURL(photo.url);
-        this.photoNotice[field] = '';
-        this.syncPhotoInput(field);
+    /** A file was picked in one input (or the picker was cancelled, which empties that input in some browsers). */
+    choosePhoto(field, slot, event) {
+        const file = event.target.files[0];
+        if (!file) {
+            this.removePhoto(field, slot);
+            return;
+        }
+        if (slot.url) URL.revokeObjectURL(slot.url);
+        slot.url = URL.createObjectURL(file);
+        this.ensurePhotoSlots();
     },
 
-    /** The input is what gets submitted, so it must hold exactly the chosen files. */
-    syncPhotoInput(field) {
-        const files = new DataTransfer();
-        this.chosenPhotos[field].forEach((photo) => files.items.add(photo.file));
-        this.$refs[field].files = files.files;
+    removePhoto(field, slot) {
+        if (slot.url) URL.revokeObjectURL(slot.url);
+        this.photoSlots[field] = this.photoSlots[field].filter((other) => other.id !== slot.id);
+        this.ensurePhotoSlots();
     },
 });
