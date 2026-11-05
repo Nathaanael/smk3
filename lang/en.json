@@ -2805,6 +2805,8 @@
     "account.template.passwordNote": "Required for new accounts (at least :min characters). Leave empty for existing accounts to keep their password.",
     "account.template.invalidTitle": "Invalid value",
     "account.template.invalidText": "Pick a value from the list. The full list is on the Referensi sheet.",
+    "account.template.preparing": "Preparing the :role template…",
+    "account.template.downloadError": "The template could not be downloaded. Please try again.",
     "account.import.done": "Upload finished: :created added, :updated updated, :unchanged unchanged.",
     "account.import.missingColumn": "Column \":column\" was not found in the first row of the file.",
     "account.import.empty": "The file has no account rows.",

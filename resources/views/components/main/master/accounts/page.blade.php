@@ -17,8 +17,18 @@
     ])->values();
 @endphp
 
-<div class="space-y-5" x-data="accountMaster({ rows: @js($rows), perPage: 5 })">
+<div class="space-y-5" x-data="accountMaster({
+    rows: @js($rows),
+    perPage: 5,
+    templateUrl: @js(route($routeName.'.template')),
+    templateError: @js(__('account.template.downloadError')),
+})">
     <x-main.master.accounts.alerts />
+
+    <x-ui.alert variant="destructive" class="px-4 py-3" x-show="error" x-cloak>
+        <x-svg.alert />
+        <x-ui.alert.title class="text-sm" x-text="error"></x-ui.alert.title>
+    </x-ui.alert>
 
     <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3">
         <div class="flex flex-col gap-4 px-5 pt-5 sm:px-6 sm:pt-6">
@@ -32,11 +42,12 @@
                     <x-svg.plus class="size-5" />
                     {{ __('account.add', ['role' => $role]) }}
                 </x-ui.button>
-                <x-ui.button variant="outline" as="a" href="{{ route($routeName.'.template') }}">
-                    <x-svg.arrow-down class="size-5" />
+                <x-ui.button variant="outline" x-on:click="downloadTemplate()" x-bind:disabled="downloadingTemplate">
+                    <span x-show="downloadingTemplate" x-cloak class="size-4 animate-spin rounded-full border-2 border-gray-300 border-t-brand-500 dark:border-gray-700 dark:border-t-brand-400"></span>
+                    <x-svg.arrow-down class="size-5" x-show="!downloadingTemplate" />
                     {{ __('clause.download') }}
                 </x-ui.button>
-                <x-main.master.accounts.upload-dialog :template-url="route($routeName.'.template')" :import-url="route($routeName.'.import')" />
+                <x-main.master.accounts.upload-dialog :import-url="route($routeName.'.import')" />
                 <span class="text-theme-xs text-gray-500 dark:text-gray-400">{{ __('account.bulkHint') }}</span>
             </div>
         </div>
@@ -79,4 +90,6 @@
         :departments="$departments"
         :multiple-departments="$multipleDepartments" />
     <x-main.master.accounts.delete-dialog :role="$role" :destroy-url="route($routeName.'.destroy', ':id')" />
+
+    <x-common.download-toast show="downloadingTemplate" cancel="cancelTemplateDownload()" :title="Js::from(__('account.template.preparing', ['role' => $role]))" />
 </div>

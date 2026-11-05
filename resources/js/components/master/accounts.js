@@ -1,12 +1,20 @@
 /**
  * User account master page (auditors, auditees): client-side search, plant filter and
- * pagination, and opening the add / edit / delete dialogs.
+ * pagination, opening the add / edit / delete dialogs, and fetching the template in the
+ * background behind a loading toast.
  *
- * Usage: x-data="accountMaster({ rows, perPage })"
- *   rows    – [{ id, name, email, departemen, departmentName, pabrik, plants, isSelf }], in display order
- *   perPage – initial rows per page
+ * Usage: x-data="accountMaster({ rows, perPage, templateUrl, templateError })"
+ *   rows          – [{ id, name, email, departemen, departmentName, pabrik, plants, isSelf }], in display order
+ *   perPage       – initial rows per page
+ *   templateUrl   – template download url
+ *   templateError – message shown when the download fails without a message of its own
  */
-export default ({ rows = [], perPage = 5 }) => ({
+import { downloadFile } from '../../lib/download';
+
+export default ({ rows = [], perPage = 5, templateUrl, templateError }) => ({
+    downloadingTemplate: false,
+    downloadController: null,
+    error: '',
     rows: Object.fromEntries(rows.map((row) => [row.id, row])),
     order: rows.map((row) => row.id),
     q: '',
@@ -77,6 +85,30 @@ export default ({ rows = [], perPage = 5 }) => ({
     /** Row number within the filtered list. */
     position(id) {
         return this.filteredIds.indexOf(id) + 1;
+    },
+
+    async downloadTemplate() {
+        if (this.downloadingTemplate) return;
+
+        this.downloadController = new AbortController();
+        this.downloadingTemplate = true;
+        this.error = '';
+        try {
+            await downloadFile(templateUrl, {
+                signal: this.downloadController.signal,
+                fallbackName: 'template-akun.xlsx',
+                errorMessage: templateError,
+            });
+        } catch (error) {
+            if (error.name !== 'AbortError') this.error = error.message;
+        } finally {
+            this.downloadingTemplate = false;
+            this.downloadController = null;
+        }
+    },
+
+    cancelTemplateDownload() {
+        this.downloadController?.abort();
     },
 
     openCreate() {

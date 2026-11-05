@@ -16,6 +16,26 @@ test('every role can open the SMK3 pages', function (Role $role, string $path, s
     ['/non-conformities', 'smk3.nonConformities'],
 ]);
 
+test('both layouts link the favicon of the application', function () {
+    $icons = [
+        '<link rel="icon" href="'.asset('favicon.ico').'" sizes="48x48">',
+        '<link rel="icon" href="'.asset('favicon.svg').'" type="image/svg+xml">',
+    ];
+
+    $this->get('/login')->assertOk()->assertSeeInOrder($icons, false);
+    $this->actingAs(User::factory()->create())->get('/progress-monitoring')->assertOk()->assertSeeInOrder($icons, false);
+
+    expect(public_path('favicon.ico'))->toBeFile()
+        ->and(public_path('favicon.svg'))->toBeFile();
+});
+
+test('the navbar shows the application name', function () {
+    $this->actingAs(User::factory()->create())
+        ->get('/progress-monitoring')
+        ->assertOk()
+        ->assertSee('>'.__('login.appName').'</a>', false);
+});
+
 test('the sidebar links to both SMK3 pages', function () {
     $this->actingAs(User::factory()->create())
         ->get('/progress-monitoring')

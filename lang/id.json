@@ -247,6 +247,8 @@
     "account.template.passwordNote": "Wajib untuk akun baru (minimal :min karakter). Kosongkan untuk akun yang sudah ada agar password tidak berubah.",
     "account.template.invalidTitle": "Nilai tidak valid",
     "account.template.invalidText": "Pilih nilai dari daftar. Daftar lengkapnya ada di sheet Referensi.",
+    "account.template.preparing": "Menyiapkan template :role…",
+    "account.template.downloadError": "Template gagal diunduh. Silakan coba lagi.",
     "account.import.done": "Upload selesai: :created ditambahkan, :updated diperbarui, :unchanged tidak berubah.",
     "account.import.missingColumn": "Kolom \":column\" tidak ditemukan di baris pertama file.",
     "account.import.empty": "File tidak berisi baris akun.",

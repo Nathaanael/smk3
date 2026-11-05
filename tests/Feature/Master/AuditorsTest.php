@@ -108,6 +108,15 @@ test('another auditor can be deleted', function () {
     expect($other->fresh())->toBeNull();
 });
 
+test('the template downloads in the background behind a loading toast', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->get('/master/auditor')
+        ->assertOk()
+        ->assertSee('x-on:click="downloadTemplate()"', false)
+        ->assertSee('cancelTemplateDownload()', false)
+        ->assertDontSee('href="'.url('/master/auditor/template').'"', false);
+});
+
 test('the template lists the current auditors and can be uploaded back', function () {
     auditorAccount(['name' => 'Andi', 'email' => 'andi@indofood.co.id', 'password' => 'lama12345']);
 

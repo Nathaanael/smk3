@@ -117,6 +117,15 @@ test('auditors cannot be changed through the auditee master', function () {
     $this->actingAs(User::factory()->admin()->create())->delete("/master/auditee/{$auditor->id}")->assertNotFound();
 });
 
+test('the auditee template downloads in the background behind a loading toast', function () {
+    $this->actingAs(User::factory()->admin()->create())
+        ->get('/master/auditee')
+        ->assertOk()
+        ->assertSee('x-on:click="downloadTemplate()"', false)
+        ->assertSee('cancelTemplateDownload()', false)
+        ->assertDontSee('href="'.url('/master/auditee/template').'"', false);
+});
+
 test('the auditee template can be uploaded back', function () {
     auditeeAccount(['email' => 'andi@indofood.co.id']);
     User::factory()->create(['email' => 'auditor@indofood.co.id', 'otorisasi' => Role::Auditor]);

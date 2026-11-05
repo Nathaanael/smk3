@@ -5,3 +5,6 @@
 @endphp
 <title>{{ $metaTitle }}</title>
 <meta name="description" content="{{ $metaDescription }}">
+{{-- without this the browser asks the domain root, which on a subfolder install is another site's icon --}}
+<link rel="icon" href="{{ asset('favicon.ico') }}" sizes="48x48">
+<link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">

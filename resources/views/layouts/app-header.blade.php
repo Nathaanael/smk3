@@ -17,6 +17,9 @@
                 <x-svg.menu-two class="size-auto! rtl:-scale-x-100" />
             </x-ui.button>
 
+            <!-- Application name (desktop only, smaller screens show it next to the logo) -->
+            <a href="{{ url('/') }}" class="hidden text-lg font-semibold whitespace-nowrap text-gray-800 xl:block dark:text-white/90">{{ __('login.appName') }}</a>
+
             <!-- Mobile sidebar toggle (below xl) -->
             <x-ui.button variant="outline" size="icon" class="text-gray-500 xl:hidden lg:size-11 dark:text-gray-400"
                 aria-label="{{ __('header.toggleSidebar') }}" @click.stop="$store.sidebar.toggleMobileOpen()">
@@ -25,8 +28,9 @@
             </x-ui.button>
 
             <!-- Logo (mobile only) -->
-            <a href="/" class="xl:hidden">
+            <a href="/" class="flex items-center gap-3 xl:hidden">
                 <x-common.app-logo :width="140" />
+                <span class="hidden text-base font-semibold whitespace-nowrap text-gray-800 sm:inline dark:text-white/90">{{ __('login.appName') }}</span>
             </a>
 
             <!-- Application menu toggle (mobile only) -->
