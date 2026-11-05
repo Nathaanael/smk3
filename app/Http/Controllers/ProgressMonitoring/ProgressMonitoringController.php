@@ -41,7 +41,7 @@ class ProgressMonitoringController extends Controller
             'currentMonth' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
         ]);
 
-        // AJAX filter changes only need the results part of the page
-        return $request->header('X-Partial') === 'results' ? $view->fragment('results') : $view;
+        // AJAX filter changes only need the parts of the page that follow the filters
+        return $request->header('X-Partial') === 'results' ? $view->fragments(['results', 'example']) : $view;
     }
 }

@@ -1,26 +1,21 @@
 {{--
     Explains how the Progress Monitoring recap is scored (App\Services\ProgressMonitor):
-    one block per measure, the colour bands of the badges and a worked example.
+    one block per measure, the colour bands of the badges and, in the slot, the worked example.
 --}}
 @use('App\Services\ProgressMonitor')
 @props(['criteria' => 166])
 @php
-    $separator = app()->getLocale() === 'id' ? ',' : '.';
-    $number = fn (int|float $value) => rtrim(rtrim(number_format($value, 2, $separator, ''), '0'), $separator);
     $satisfactory = ProgressMonitor::SATISFACTORY;
     $repeat = ProgressMonitor::MINOR_TO_MAJOR;
-
-    // worked example: 4 Minor findings on different clauses, 3 of them closed
-    $exampleScore = round(($criteria - 4) / $criteria * 100, 2);
-    $exampleRanking = round((75 + $exampleScore) / 2, 2);
+    $weight = ProgressMonitor::MAJOR_WEIGHT;
 
     $measures = [
         ['icon' => 'bar-chart', 'tone' => 'bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400',
-            'title' => __('pm.columns.score'), 'formula' => __('pm.guide.score.formula', ['criteria' => $criteria]),
-            'text' => __('pm.guide.score.text', ['criteria' => $criteria])],
+            'title' => __('pm.columns.score'), 'formula' => __('pm.guide.score.formula', ['criteria' => $criteria, 'weight' => $weight]),
+            'text' => __('pm.guide.score.text', ['criteria' => $criteria, 'weight' => $weight])],
         ['icon' => 'octagon-alert', 'tone' => 'bg-error-50 text-error-500 dark:bg-error-500/15 dark:text-error-400',
-            'title' => __('pm.guide.penalty.title'), 'formula' => __('pm.guide.penalty.formula'),
-            'text' => __('pm.guide.penalty.text', ['min' => $repeat])],
+            'title' => __('pm.guide.penalty.title'), 'formula' => __('pm.guide.penalty.formula', ['weight' => $weight]),
+            'text' => __('pm.guide.penalty.text', ['min' => $repeat, 'weight' => $weight])],
         ['icon' => 'shield-check', 'tone' => 'bg-success-50 text-success-500 dark:bg-success-500/15 dark:text-success-400',
             'title' => __('pm.columns.rating'), 'formula' => __('pm.guide.rating.formula', ['min' => $satisfactory]),
             'text' => __('pm.guide.rating.text')],
@@ -66,27 +61,9 @@
             <p class="mt-3 text-theme-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ __('pm.guide.colorsNote') }}</p>
         </div>
 
-        <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
-            <h4 class="mb-1 text-sm font-semibold text-gray-800 dark:text-white/90">{{ __('pm.guide.example') }}</h4>
-            <p class="mb-3 text-theme-xs text-gray-500 dark:text-gray-400">{{ __('pm.guide.exampleCase') }}</p>
-            <dl class="flex flex-col gap-1.5 font-mono text-theme-xs text-gray-700 dark:text-gray-300">
-                <div class="flex flex-wrap gap-x-2">
-                    <dt class="text-gray-500 dark:text-gray-400">{{ __('pm.columns.closedPercent') }}</dt>
-                    <dd>= 3 / 4 × 100 = <span class="font-semibold text-gray-800 dark:text-white/90">75%</span></dd>
-                </div>
-                <div class="flex flex-wrap gap-x-2">
-                    <dt class="text-gray-500 dark:text-gray-400">{{ __('pm.columns.score') }}</dt>
-                    <dd>= ({{ $criteria }} − 4) / {{ $criteria }} × 100 = <span class="font-semibold text-gray-800 dark:text-white/90">{{ $number($exampleScore) }}%</span></dd>
-                </div>
-                <div class="flex flex-wrap gap-x-2">
-                    <dt class="text-gray-500 dark:text-gray-400">{{ __('pm.columns.ranking') }}</dt>
-                    <dd>= (75 + {{ $number($exampleScore) }}) / 2 = <span class="font-semibold text-gray-800 dark:text-white/90">{{ $number($exampleRanking) }}%</span></dd>
-                </div>
-                <div class="flex flex-wrap gap-x-2">
-                    <dt class="text-gray-500 dark:text-gray-400">{{ __('pm.columns.rating') }}</dt>
-                    <dd><x-ui.badge size="sm" :color="$exampleScore >= $satisfactory ? 'success' : 'error'">{{ $exampleScore >= $satisfactory ? __('pm.satisfactory') : __('pm.poor') }}</x-ui.badge></dd>
-                </div>
-            </dl>
+        {{-- the worked example follows the filters, so monitor.js replaces it on every reload --}}
+        <div x-ref="example" x-bind:aria-busy="loading" x-bind:class="loading && 'pointer-events-none opacity-60'" class="rounded-xl border border-gray-200 p-4 transition-opacity dark:border-gray-800">
+            {{ $slot }}
         </div>
     </div>
 </x-common.component-card>

@@ -282,8 +282,8 @@ class FindingExporter
     private function progressNotes(int $criteria): array
     {
         $notes = [
-            __('pm.columns.score') => [__('pm.guide.score.formula', ['criteria' => $criteria]), __('pm.guide.score.text', ['criteria' => $criteria])],
-            __('pm.guide.penalty.title') => [__('pm.guide.penalty.formula'), __('pm.guide.penalty.text', ['min' => ProgressMonitor::MINOR_TO_MAJOR])],
+            __('pm.columns.score') => [__('pm.guide.score.formula', ['criteria' => $criteria, 'weight' => ProgressMonitor::MAJOR_WEIGHT]), __('pm.guide.score.text', ['criteria' => $criteria, 'weight' => ProgressMonitor::MAJOR_WEIGHT])],
+            __('pm.guide.penalty.title') => [__('pm.guide.penalty.formula', ['weight' => ProgressMonitor::MAJOR_WEIGHT]), __('pm.guide.penalty.text', ['min' => ProgressMonitor::MINOR_TO_MAJOR, 'weight' => ProgressMonitor::MAJOR_WEIGHT])],
             __('pm.columns.rating') => [__('pm.guide.rating.formula', ['min' => ProgressMonitor::SATISFACTORY]), __('pm.guide.rating.text')],
             __('pm.columns.ranking') => [__('pm.guide.ranking.formula'), __('pm.guide.ranking.text')],
         ];

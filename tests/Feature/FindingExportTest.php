@@ -206,8 +206,8 @@ test('excel puts the progress monitoring recap on its own sheet before the findi
     $rows = $workbook->getSheet(1)->toArray(null, true, false, false);
     expect($rows[0][0])->toContain('Cikampek')
         ->and($rows[2][2])->toBe(__('pm.columns.total'));
-    // OIL is the first department: 2 findings of March, 1 closed, 2 Minor, no penalty
-    expect(array_slice($rows[3], 0, 7))->toEqual([1, 'Produksi Minyak', 2, 1, 1, 50, 2]);
+    // OIL is the first department: 2 findings of March, 1 closed, 1 open Minor, no penalty
+    expect(array_slice($rows[3], 0, 7))->toEqual([1, 'Produksi Minyak', 2, 1, 1, 50, 1]);
 });
 
 test('without the progress option the excel has no progress monitoring sheet', function () {

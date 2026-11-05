@@ -11,16 +11,21 @@ use Illuminate\Support\Collection;
  * legacy dashboard (smk3old MainController::index):
  *
  *  - Progress Temuan: findings, closed, open and % closed;
- *  - Penyimpangan: findings per category. A clause found as Minor at least MINOR_TO_MAJOR times in
- *    one department counts as an extra Major;
- *  - Score: 0 with any Kritis, 50 with any Major, else (criteria - Minor) / criteria × 100;
- *  - Nilai SMK3: "satisfactory" when there is no Kritis / Major and Score >= SATISFACTORY;
- *  - Total Ranking: 0 with any Kritis, 50 with any Major, else (% closed + Score) / 2, where a
- *    department without findings counts as 100% closed.
+ *  - Penyimpangan: open findings per category (closed ones are settled and no longer count). A
+ *    clause open as Minor at least MINOR_TO_MAJOR times in one department counts as an extra Major,
+ *    on top of those Minor findings;
+ *  - Score: 0 with any open Kritis, else (criteria - (Minor + Major × MAJOR_WEIGHT)) / criteria × 100,
+ *    at least 0, where Major includes the extra Majors;
+ *  - Nilai SMK3: "satisfactory" when there is no open Kritis / Major and Score >= SATISFACTORY;
+ *  - Total Ranking: 0 with any open Kritis, else (% closed + Score) / 2, where a department without
+ *    findings counts as 100% closed.
  */
 class ProgressMonitor
 {
     public const MINOR_TO_MAJOR = 2;
+
+    /** How many Minor findings one Major weighs in the Score. */
+    public const MAJOR_WEIGHT = 2;
 
     public const SATISFACTORY = 85;
 
@@ -59,18 +64,16 @@ class ProgressMonitor
     private function row(string $code, string $name, Collection $findings, int $criteria): array
     {
         $counts = $this->counts($findings);
-        $penalty = match (true) {
-            $counts['kritis'] > 0 => 0,
-            $counts['major'] + $counts['converted_major'] > 0 => 50,
-            default => null,
-        };
-        $score = $penalty ?? round(($criteria - $counts['minor']) / $criteria * 100, 2);
+        $hasKritis = $counts['kritis'] > 0;
+        $majors = $counts['major'] + $counts['converted_major'];
+        $points = $counts['minor'] + $majors * self::MAJOR_WEIGHT;
+        $score = $hasKritis ? 0 : max(0, round(($criteria - $points) / $criteria * 100, 2));
 
         return ['code' => $code, 'name' => $name] + $counts + [
             'score' => $score,
-            'satisfactory' => $penalty === null && $score >= self::SATISFACTORY,
+            'satisfactory' => ! $hasKritis && $majors === 0 && $score >= self::SATISFACTORY,
             // nothing to close counts as fully closed (the legacy query ranked such departments at 50)
-            'ranking' => $penalty ?? round((($counts['total'] ? $counts['closed_percent'] : 100) + $score) / 2, 2),
+            'ranking' => $hasKritis ? 0 : round((($counts['total'] ? $counts['closed_percent'] : 100) + $score) / 2, 2),
         ];
     }
 
@@ -82,7 +85,8 @@ class ProgressMonitor
     {
         $total = $findings->count();
         $closed = $findings->filter(fn (NonConformity $finding) => $finding->isClosed())->count();
-        $minors = $findings->where('kategori', 'Minor');
+        $open = $findings->reject(fn (NonConformity $finding) => $finding->isClosed());
+        $minors = $open->where('kategori', 'Minor');
 
         // clauses found as Minor often enough in one department to count as a Major
         $repeated = $minors
@@ -93,11 +97,11 @@ class ProgressMonitor
         return [
             'total' => $total,
             'closed' => $closed,
-            'open' => $total - $closed,
+            'open' => $open->count(),
             'closed_percent' => $total ? round($closed / $total * 100, 2) : 0,
             'minor' => $minors->count(),
-            'major' => $findings->where('kategori', 'Major')->count(),
-            'kritis' => $findings->where('kategori', 'Kritis')->count(),
+            'major' => $open->where('kategori', 'Major')->count(),
+            'kritis' => $open->where('kategori', 'Kritis')->count(),
             'converted_major' => $repeated->count(),
             'converted_clauses' => $repeated
                 ->map(fn (Collection $group) => ['clause' => $group->first()->no_klausul, 'count' => $group->count()])

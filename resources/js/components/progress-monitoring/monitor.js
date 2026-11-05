@@ -1,6 +1,6 @@
 /**
- * Progress Monitoring: plant + period filters that reload only the recap (a Blade fragment)
- * over AJAX and keep the URL in sync.
+ * Progress Monitoring: plant + period filters that reload only the recap and the worked example
+ * of the scoring guide (Blade fragments) over AJAX and keep the URL in sync.
  *
  * Usage: x-data="progressMonitor({ url, filters, currentMonth })"
  *   filters      – current values (pabrik, dari, sampai)
@@ -51,7 +51,14 @@ export default ({ url, filters = {}, currentMonth = ['', ''] }) => ({
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            this.$refs.results.innerHTML = await response.text();
+            // the response holds both fragments: the example goes to the guide, the rest to the results
+            const html = document.createElement('template');
+            html.innerHTML = await response.text();
+            const example = html.content.querySelector('[data-score-example]');
+            example.remove();
+            this.$refs.example.replaceChildren(example);
+            this.$refs.results.replaceChildren(html.content);
+
             window.history.replaceState(null, '', target);
         } catch (error) {
             if (error.name !== 'AbortError') console.error('Failed to load progress monitoring', error);
