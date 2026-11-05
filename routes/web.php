@@ -65,6 +65,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/non-conformities/{finding}/photos/{photo}', [FindingActionsController::class, 'destroyPhoto'])
         ->name('non-conformities.photo.destroy');
 
+    // reminders to fill in the repair photos (admin and auditor); only the page layout for now
+    Route::get('/email-reminders', fn () => view('pages.emailReminders.index', ['title' => __('reminder.title')]))
+        ->middleware('role:admin,auditor')
+        ->name('email-reminders');
+
     // master data (admin and auditor)
     Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {
         Route::get('/clauses', [ClauseController::class, 'index'])->middleware('remember.filters')->name('clauses');

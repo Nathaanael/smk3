@@ -27,8 +27,13 @@ class MenuHelper
             'path' => '/non-conformities',
         ];
 
-        // master data: admin and auditor only (same as the legacy system)
+        // email reminders and master data: admin and auditor only (same as the legacy system)
         if (in_array(auth()->user()?->otorisasi, [Role::Admin, Role::Auditor], true)) {
+            $items[] = [
+                'icon' => 'email',
+                'name' => 'reminder.title',
+                'path' => '/email-reminders',
+            ];
             $items[] = [
                 'icon' => 'tables',
                 'name' => 'master.title',

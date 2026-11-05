@@ -30,6 +30,10 @@ return [
         'title' => 'meta.progressMonitoring.title',
         'description' => 'meta.progressMonitoring.description',
     ],
+    '/email-reminders' => [
+        'title' => 'meta.emailReminders.title',
+        'description' => 'meta.emailReminders.description',
+    ],
     '/login' => [
         'title' => 'meta.login.title',
         'description' => 'meta.login.description',
