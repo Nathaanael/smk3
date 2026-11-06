@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Email\EmailController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Master\AuditeeController;
 use App\Http\Controllers\Master\AuditorController;
@@ -65,9 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/non-conformities/{finding}/photos/{photo}', [FindingActionsController::class, 'destroyPhoto'])
         ->name('non-conformities.photo.destroy');
 
-    // reminders to fill in the repair photos (admin and auditor); only the page layout for now
-    Route::get('/email-reminders', fn () => view('pages.emailReminders.index', ['title' => __('reminder.title')]))
-        ->middleware('role:admin,auditor')
+    // reminders to fill in the repair photos (admin and auditor); sending comes later
+    Route::get('/email-reminders', [EmailController::class, 'index'])
+        ->middleware(['role:admin,auditor', 'remember.filters'])
         ->name('email-reminders');
 
     // master data (admin and auditor)

@@ -144,6 +144,15 @@ class NonConformity extends Model
     }
 
     /**
+     * Open findings without a repair photo: the ones the email reminder is about.
+     */
+    public function scopeAwaitingRepairPhoto(Builder $query): void
+    {
+        $query->where('status', false)
+            ->whereDoesntHave('photos', fn (Builder $query) => $query->where('field', 'foto_perbaikan'));
+    }
+
+    /**
      * Findings a user may see: those of their plants, and for an auditee only those of
      * their own departments plus any finding they are the PIC of.
      */

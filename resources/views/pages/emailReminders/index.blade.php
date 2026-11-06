@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @php
-    // tabs of the email sidebar; the content of the mail folders comes with the sending feature
+    // tabs of the email sidebar; the content of the sent and failed folders comes with the sending feature
     $folders = [
         'compose' => ['icon' => 'send', 'label' => __('reminder.compose.title'), 'description' => __('reminder.compose.description')],
         'pending' => ['icon' => 'envelope', 'label' => __('reminder.folders.pending'), 'description' => __('reminder.folders.pendingDesc')],
@@ -29,7 +29,24 @@
 
             <x-main.email-reminders.compose-form x-show="folder === 'compose'" x-cloak />
 
-            <div x-show="folder !== 'compose'" class="flex flex-col items-center gap-3 px-5 py-16 text-center sm:px-6">
+            {{-- same search and filters as the findings list, reloading only the results --}}
+            <div x-show="folder === 'pending'"
+                x-data="nonConformityList({
+                    url: @js(route('email-reminders')),
+                    filters: @js($filters),
+                    departments: @js($departments),
+                })">
+                <x-main.non-conformities.filters class="px-5 pt-5 sm:px-6" :filters="$filters" :plants="$plants" :categories="$categories" :show-status="false" />
+
+                <div x-ref="results" x-on:click="onResultsClick($event)"
+                    x-bind:aria-busy="loading" x-bind:class="loading && 'pointer-events-none opacity-60'" class="transition-opacity">
+                    @fragment('results')
+                        <x-main.email-reminders.pending-list :findings="$findings" :recipients="$recipients" :filtered="$filtered" :show-plant="count($plants) > 1" />
+                    @endfragment
+                </div>
+            </div>
+
+            <div x-show="folder === 'sent' || folder === 'failed'" x-cloak class="flex flex-col items-center gap-3 px-5 py-16 text-center sm:px-6">
                 <span class="flex size-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400">
                     <x-svg.envelope class="size-6" />
                 </span>

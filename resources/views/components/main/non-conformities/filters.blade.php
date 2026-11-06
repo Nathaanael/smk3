@@ -2,7 +2,7 @@
     Search box + "Filter" button with a panel holding every filter. State lives in the
     surrounding nonConformityList Alpine component (resources/js/components/non-conformities/list.js).
 --}}
-@props(['filters' => [], 'plants' => [], 'categories' => []])
+@props(['filters' => [], 'plants' => [], 'categories' => [], 'showStatus' => true])
 @php
     $labelClass = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400';
 @endphp
@@ -58,14 +58,16 @@
                     </x-ui.native-select>
                 </div>
 
-                <div>
-                    <label for="filter-status" class="{{ $labelClass }}">{{ __('nc.status') }}</label>
-                    <x-ui.native-select id="filter-status" x-model="status" x-on:change="apply()">
-                        <option value="">{{ __('nc.allStatuses') }}</option>
-                        <option value="open" @selected(($filters['status'] ?? '') === 'open')>{{ __('nc.open') }}</option>
-                        <option value="closed" @selected(($filters['status'] ?? '') === 'closed')>{{ __('nc.closed') }}</option>
-                    </x-ui.native-select>
-                </div>
+                @if ($showStatus)
+                    <div>
+                        <label for="filter-status" class="{{ $labelClass }}">{{ __('nc.status') }}</label>
+                        <x-ui.native-select id="filter-status" x-model="status" x-on:change="apply()">
+                            <option value="">{{ __('nc.allStatuses') }}</option>
+                            <option value="open" @selected(($filters['status'] ?? '') === 'open')>{{ __('nc.open') }}</option>
+                            <option value="closed" @selected(($filters['status'] ?? '') === 'closed')>{{ __('nc.closed') }}</option>
+                        </x-ui.native-select>
+                    </div>
+                @endif
 
                 {{-- two separate dates; each limits the other so "to" cannot fall before "from" --}}
                 <div class="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-2" x-ref="dateRange">
