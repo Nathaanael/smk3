@@ -9,22 +9,27 @@
  * progress, and a long list cannot run into the time limit of a single request. Leaving the page
  * stops the rest, so it asks first.
  *
- * Usage: x-data="emailReminders({ folder, people, picked, subject, message, sendUrl, previewUrl, labels })"
- *   people – [{ id, name, email, departments, findings }]
- *   picked – ids sent with a rejected message, to restore that choice; null when there is none
- *   labels – { sent, partial, stopped, interrupted, none, connection } messages about a finished send
+ * Usage: x-data="emailReminders({ folder, people, picked, subject, message, attachments, sendUrl, previewUrl, schedule, scheduleUrl, scheduleStatus, labels })"
+ *   people      – [{ id, name, email, departments, findings }]
+ *   picked      – ids sent with a rejected message, to restore that choice; null when there is none
+ *   attachments – formats ticked at the start ('pdf', 'xlsx')
+ *   schedule    – { frequency, weekday, monthday, time, pabrik, active } of the automatic reminder
+ *   labels      – { sent, partial, stopped, interrupted, none, connection } messages about a finished send
  */
 const warnBeforeLeaving = (event) => event.preventDefault();
 
-export default ({ folder = 'pending', people = [], picked = null, subject = '', message = '', sendUrl, previewUrl, labels = {} }) => ({
+export default ({ folder = 'pending', people = [], picked = null, subject = '', message = '', attachments = [], sendUrl, previewUrl, schedule = {}, scheduleUrl, scheduleStatus = {}, labels = {} }) => ({
     folder,
     people,
     excluded: picked ? people.filter((person) => !picked.map(Number).includes(person.id)).map((person) => person.id) : [],
     personSearch: '',
     subject,
     message,
-    attachPdf: false,
-    attachExcel: false,
+    attachPdf: attachments.includes('pdf'),
+    attachExcel: attachments.includes('xlsx'),
+    schedule,
+    scheduleStatus,
+    savingSchedule: false,
     sending: false,
     stopRequested: false,
     progress: { total: 0, done: 0, sent: 0, failed: 0 },
@@ -38,6 +43,10 @@ export default ({ folder = 'pending', people = [], picked = null, subject = '', 
     get visiblePeople() {
         const search = this.personSearch.trim().toLowerCase();
         return this.people.filter((person) => !search || `${person.name} ${person.email}`.toLowerCase().includes(search));
+    },
+
+    get attachmentFormats() {
+        return [this.attachPdf && 'pdf', this.attachExcel && 'xlsx'].filter(Boolean);
     },
 
     get progressPercent() {
@@ -77,13 +86,36 @@ export default ({ folder = 'pending', people = [], picked = null, subject = '', 
         form.requestSubmit();
     },
 
+    /** Save when the automatic reminder goes out, with the written message. */
+    async saveSchedule() {
+        if (this.savingSchedule || !this.messageIsValid()) return;
+
+        this.savingSchedule = true;
+        this.result = null;
+        try {
+            const { data } = await window.axios.post(scheduleUrl, {
+                ...this.schedule,
+                subject: this.subject,
+                message: this.message,
+                attachments: this.attachmentFormats,
+            });
+            this.scheduleStatus = data.status;
+            this.result = { type: 'success', message: data.message };
+        } catch (error) {
+            const errors = error.response?.data?.errors;
+            this.result = { type: 'error', message: (errors && Object.values(errors)[0]?.[0]) ?? error.response?.data?.message ?? labels.connection };
+        } finally {
+            this.savingSchedule = false;
+        }
+    },
+
     async sendEmails() {
         if (this.sending || !this.pickedIds.length || !this.messageIsValid()) return;
 
         // what was confirmed, even if the filters or the text change while this runs
         const ids = [...this.pickedIds];
         const url = sendUrl + window.location.search;
-        const payload = { subject: this.subject, message: this.message, attachments: [this.attachPdf && 'pdf', this.attachExcel && 'xlsx'].filter(Boolean) };
+        const payload = { subject: this.subject, message: this.message, attachments: this.attachmentFormats };
 
         this.progress = { total: ids.length, done: 0, sent: 0, failed: 0 };
         this.result = null;

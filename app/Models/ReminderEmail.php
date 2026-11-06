@@ -22,6 +22,8 @@ class ReminderEmail extends Model
 
     protected $fillable = [
         'sender_id',
+        'scheduled',
+        'mailer',
         'recipient_name',
         'recipient_email',
         'redirected_to',
@@ -30,6 +32,11 @@ class ReminderEmail extends Model
         'status',
         'error',
     ];
+
+    protected function casts(): array
+    {
+        return ['scheduled' => 'boolean'];
+    }
 
     public function sender(): BelongsTo
     {

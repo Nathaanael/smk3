@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Email;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FindingFilterRequest;
 use App\Http\Requests\ReminderMessageRequest;
+use App\Http\Requests\ReminderScheduleRequest;
 use App\Mail\FindingReminderMail;
 use App\Models\NonConformity;
 use App\Models\ReminderEmail;
+use App\Models\ReminderSchedule;
 use App\Models\User;
 use App\Services\FindingReminders;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -51,6 +53,9 @@ class EmailController extends Controller
             'sentEmails' => $this->historyPage(ReminderEmail::SENT),
             'failedEmails' => $this->historyPage(ReminderEmail::FAILED),
             'senders' => $this->senders(),
+            'schedule' => $schedule = ReminderSchedule::first(),
+            'scheduleStatus' => $this->scheduleStatus($schedule),
+            'canEditSchedule' => $request->user()->isAdmin(),
             // only PICs with an account have an email address to send to
             'recipients' => $reminders->recipients($pending),
             'filters' => $filters,
@@ -96,6 +101,43 @@ class EmailController extends Controller
         $failed = $mails->reject(fn (FindingReminderMail $mail) => $reminders->deliver($mail, $request->user()))->count();
 
         return response()->json(['sent' => $mails->count() - $failed, 'failed' => $failed]);
+    }
+
+    /**
+     * Save the automatic reminder. It only runs once it is turned on here, and a time that already
+     * passed today waits for its next turn.
+     */
+    public function saveSchedule(ReminderScheduleRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $schedule = ReminderSchedule::firstOrNew();
+        $schedule->fill([
+            ...$validated,
+            'weekday' => $validated['frequency'] === 'weekly' ? $validated['weekday'] : null,
+            'monthday' => $validated['frequency'] === 'monthly' ? $validated['monthday'] : null,
+            'attachments' => $validated['attachments'] ?? [],
+            'updated_by' => $request->user()->id,
+        ]);
+        $schedule->skipPassedSlot(now());
+        $schedule->save();
+
+        return response()->json(['message' => __('reminder.schedule.saved'), 'status' => $this->scheduleStatus($schedule)]);
+    }
+
+    /**
+     * @return array{text: string, logOnly: bool}
+     */
+    private function scheduleStatus(?ReminderSchedule $schedule): array
+    {
+        $next = $schedule?->nextRunAt(now());
+
+        return [
+            'text' => $next
+                ? __('reminder.schedule.statusActive', ['next' => $next->copy()->setTimezone(ReminderEmail::TIMEZONE)->translatedFormat('l, d M Y H:i').' WIB'])
+                : __('reminder.schedule.statusInactive'),
+            'logOnly' => config('smk3.reminder_schedule_mailer') === 'log',
+        ];
     }
 
     /**

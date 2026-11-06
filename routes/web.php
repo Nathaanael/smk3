@@ -79,6 +79,10 @@ Route::middleware('auth')->group(function () {
             ->whereIn('status', [ReminderEmail::SENT, ReminderEmail::FAILED])
             ->name('email-reminders.history');
     });
+    // the one automatic reminder reaches every plant, so only admins change it
+    Route::post('/email-reminders/schedule', [EmailController::class, 'saveSchedule'])
+        ->middleware('role:admin')
+        ->name('email-reminders.schedule');
 
     // master data (admin and auditor)
     Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {

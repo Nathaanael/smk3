@@ -45,13 +45,16 @@
                             <td class="{{ $cellClass }} whitespace-nowrap">
                                 <p class="text-gray-800 dark:text-white/90">{{ $email->recipient_name }}</p>
                                 <p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ $email->recipient_email }}</p>
+                                @if ($email->mailer === 'log')
+                                    <p class="mt-1 text-theme-xs text-warning-600 dark:text-warning-500">{{ __('reminder.history.logOnly') }}</p>
+                                @endif
                                 @if ($email->redirected_to)
                                     <p class="mt-1 text-theme-xs text-warning-600 dark:text-warning-500">{{ __('reminder.history.redirected', ['address' => $email->redirected_to]) }}</p>
                                 @endif
                             </td>
                             <td class="{{ $cellClass }}">{{ $email->subject }}</td>
                             <td class="{{ $cellClass }} whitespace-nowrap">{{ $email->findings_count }}</td>
-                            <td class="{{ $cellClass }} whitespace-nowrap">{{ $email->sender?->name ?? '—' }}</td>
+                            <td class="{{ $cellClass }} whitespace-nowrap">{{ $email->scheduled ? __('reminder.history.scheduled') : ($email->sender?->name ?? '—') }}</td>
                             @if ($showError)
                                 <td class="{{ $cellClass }}">
                                     <p class="line-clamp-3 text-theme-xs break-words text-error-600 dark:text-error-500" title="{{ $email->error }}">{{ $email->error }}</p>

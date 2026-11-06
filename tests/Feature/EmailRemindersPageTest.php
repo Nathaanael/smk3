@@ -26,7 +26,7 @@ test('admins and auditors see the menu and the email sidebar', function (Role $r
         ->assertSee(__('reminder.folders.failed'));
 })->with([Role::Admin, Role::Auditor]);
 
-test('the write message tab can send manually with attachments, while the schedule stays disabled', function () {
+test('the write message tab can send manually with attachments or on a schedule', function () {
     $response = $this->actingAs(User::factory()->admin()->create())
         ->get('/email-reminders')
         ->assertOk()
@@ -40,7 +40,8 @@ test('the write message tab can send manually with attachments, while the schedu
         ->assertSee(__('reminder.compose.attachExcel'))
         ->assertSee('x-model="attachPdf"', false)
         ->assertSee('x-model="attachExcel"', false)
-        ->assertSee(__('reminder.compose.notReady'));
+        ->assertSee(__('reminder.schedule.active'))
+        ->assertSee('x-on:click="saveSchedule()"', false);
 
     expect($response->getContent())
         ->toContain('name="subject"')
@@ -49,8 +50,7 @@ test('the write message tab can send manually with attachments, while the schedu
         ->toContain('email-reminders\/preview')
         ->not->toContain('@js(')
         ->not->toMatch('/<input[^>]*disabled[^>]*x-model="attachPdf"/')
-        ->not->toMatch('/<input[^>]*disabled[^>]*x-model="attachExcel"/')
-        ->toMatch('/<button[^>]*disabled[^>]*x-show="mode === \'schedule\'"|<button[^>]*x-show="mode === \'schedule\'"[^>]*disabled/');
+        ->not->toMatch('/<input[^>]*disabled[^>]*x-model="attachExcel"/');
 });
 
 function reminderMessage(array $overrides = []): array

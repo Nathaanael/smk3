@@ -30,10 +30,21 @@
             folder: @js($errors->any() ? 'compose' : 'pending'),
             people: @js($recipients),
             picked: @js(old('recipients')),
-            subject: @js(old('subject', __('reminder.compose.defaultSubject'))),
-            message: @js(old('message', __('reminder.compose.defaultMessage'))),
+            subject: @js(old('subject', $schedule?->subject ?? __('reminder.compose.defaultSubject'))),
+            message: @js(old('message', $schedule?->message ?? __('reminder.compose.defaultMessage'))),
+            attachments: @js($schedule?->attachments ?? []),
             sendUrl: @js(route('email-reminders.send')),
             previewUrl: @js(route('email-reminders.preview')),
+            schedule: @js([
+                'frequency' => $schedule?->frequency ?? 'weekly',
+                'weekday' => $schedule?->weekday ?? 1,
+                'monthday' => $schedule?->monthday ?? 1,
+                'time' => $schedule?->time ?? '08:00',
+                'pabrik' => $schedule?->pabrik ?? '',
+                'active' => $schedule?->active ?? false,
+            ]),
+            scheduleUrl: @js(route('email-reminders.schedule')),
+            scheduleStatus: @js($scheduleStatus),
             labels: @js([
                 'sent' => __('reminder.send.sent'),
                 'partial' => __('reminder.send.partial'),
@@ -67,7 +78,7 @@
                 </div>
             @endforeach
 
-            <x-main.email-reminders.compose-form x-show="folder === 'compose'" x-cloak />
+            <x-main.email-reminders.compose-form x-show="folder === 'compose'" x-cloak :can-edit-schedule="$canEditSchedule" />
 
             {{-- same search and filters as the findings list, reloading only the results --}}
             <div x-show="folder === 'pending'" x-cloak
