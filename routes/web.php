@@ -66,10 +66,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/non-conformities/{finding}/photos/{photo}', [FindingActionsController::class, 'destroyPhoto'])
         ->name('non-conformities.photo.destroy');
 
-    // reminders to fill in the repair photos (admin and auditor); sending comes later
+    // reminders to fill in the repair photos (admin and auditor)
     Route::get('/email-reminders', [EmailController::class, 'index'])
         ->middleware(['role:admin,auditor', 'remember.filters'])
         ->name('email-reminders');
+    Route::middleware('role:admin,auditor')->group(function () {
+        Route::post('/email-reminders/preview', [EmailController::class, 'preview'])->name('email-reminders.preview');
+        Route::post('/email-reminders/send', [EmailController::class, 'send'])->middleware('throttle:10,1')->name('email-reminders.send');
+    });
 
     // master data (admin and auditor)
     Route::middleware('role:admin,auditor')->prefix('master')->name('master.')->group(function () {

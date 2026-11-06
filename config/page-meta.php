@@ -34,6 +34,10 @@ return [
         'title' => 'meta.emailReminders.title',
         'description' => 'meta.emailReminders.description',
     ],
+    '/email-reminders/preview' => [
+        'title' => 'meta.emailReminderPreview.title',
+        'description' => 'meta.emailReminders.description',
+    ],
     '/login' => [
         'title' => 'meta.login.title',
         'description' => 'meta.login.description',

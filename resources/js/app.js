@@ -5,6 +5,7 @@ import "flatpickr/dist/flatpickr.min.css";
 import { Indonesian } from "flatpickr/dist/l10n/id.js";
 import "./bootstrap";
 import initCharts from "./components/chart";
+import emailReminders from "./components/email-reminders/page";
 import nonConformityList from "./components/non-conformities/list";
 import progressMonitor from "./components/progress-monitoring/monitor";
 import findingForm from "./components/non-conformities/create";
@@ -64,6 +65,7 @@ Alpine.data("dropdown", () => ({
 }));
 
 registerUi(Alpine);
+Alpine.data("emailReminders", emailReminders);
 Alpine.data("nonConformityList", nonConformityList);
 Alpine.data("progressMonitor", progressMonitor);
 Alpine.data("findingForm", findingForm);

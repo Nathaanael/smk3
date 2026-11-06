@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Trying out the real mail server: everything goes to this one address (MAIL_ALWAYS_TO)
+        if ($address = config('mail.always_to')) {
+            Mail::alwaysTo($address);
+        }
+
         // Blade Component Aliases for main feature modules
         Blade::anonymousComponentPath(resource_path('views/components/main/dashboard'), 'dashboard');
         Blade::anonymousComponentPath(resource_path('views/components/main/dashboard/finance'), 'finance');
@@ -44,4 +50,4 @@ class AppServiceProvider extends ServiceProvider
         Blade::anonymousComponentPath(resource_path('views/components/main/pages/pricing-tables'), 'pricing');
         Blade::anonymousComponentPath(resource_path('views/components/main/pages/integrations'), 'integration');
     }
-}
+}
