@@ -3,6 +3,7 @@
 use App\Enums\Role;
 use App\Mail\FindingReminderMail;
 use App\Models\NonConformity;
+use App\Models\ReminderEmail;
 use App\Models\User;
 use App\Providers\AppServiceProvider;
 use App\Services\FindingReminders;
@@ -229,6 +230,107 @@ test('a mail server that cannot be reached shows as failed instead of an error p
         ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
         ->assertRedirect(route('email-reminders'))
         ->assertSessionHas('error', __('reminder.send.partial', ['sent' => 0, 'failed' => 1]));
+});
+
+function reminderLog(string $status, array $attributes = []): ReminderEmail
+{
+    return ReminderEmail::create($attributes + [
+        'recipient_name' => 'Budi Auditee',
+        'recipient_email' => 'budi@example.test',
+        'subject' => 'Pengingat',
+        'findings_count' => 1,
+        'status' => $status,
+    ]);
+}
+
+test('a failed email is recorded with its reason and shown on the failed tab', function () {
+    config(['mail.default' => 'smtp', 'mail.mailers.smtp.host' => '127.0.0.1', 'mail.mailers.smtp.port' => 1, 'mail.mailers.smtp.timeout' => 1]);
+    $admin = User::factory()->admin()->create();
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'name' => 'Budi Auditee']);
+    NonConformity::factory()->open()->count(2)->create(['pic' => $pic->email]);
+
+    $this->actingAs($admin)
+        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
+        ->assertSessionHas('folder', 'failed');
+
+    $log = ReminderEmail::sole();
+    expect($log)
+        ->status->toBe(ReminderEmail::FAILED)
+        ->recipient_email->toBe($pic->email)
+        ->subject->toBe('Pengingat untuk Budi Auditee')
+        ->findings_count->toBe(2)
+        ->sender_id->toBe($admin->id)
+        ->and($log->error)->toContain('Connection could not be established');
+
+    $this->actingAs($admin)->get('/email-reminders')
+        ->assertOk()
+        ->assertSee("folder: 'failed'", false)
+        ->assertSee('Connection could not be established')
+        ->assertSee(__('reminder.history.error'));
+});
+
+test('a sent email is recorded and shown on the sent tab', function () {
+    Mail::fake();
+    $admin = User::factory()->admin()->create();
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee]);
+    NonConformity::factory()->open()->create(['pic' => $pic->email]);
+
+    $this->actingAs($admin)
+        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
+        ->assertSessionHas('folder', 'sent');
+
+    expect(ReminderEmail::sole())->status->toBe(ReminderEmail::SENT)->error->toBeNull();
+
+    $this->actingAs($admin)->get('/email-reminders')
+        ->assertSee("folder: 'sent'", false)
+        ->assertSee(__('reminder.history.showing', ['from' => 1, 'to' => 1, 'total' => 1]))
+        ->assertSee(__('reminder.history.emptyFailed'))
+        ->assertDontSee(__('reminder.history.error'));
+});
+
+test('admins and auditors see the whole send history', function (Role $role) {
+    $sender = User::factory()->admin()->create(['name' => 'Pengirim Lain']);
+    reminderLog(ReminderEmail::SENT, ['sender_id' => $sender->id, 'recipient_name' => 'Kiriman Terkirim']);
+    reminderLog(ReminderEmail::FAILED, ['sender_id' => $sender->id, 'recipient_name' => 'Kiriman Gagal', 'error' => 'alasan gagal']);
+
+    $this->actingAs(User::factory()->create(['otorisasi' => $role]))->get('/email-reminders')
+        ->assertOk()
+        ->assertSee('Kiriman Terkirim')
+        ->assertSee('Kiriman Gagal')
+        ->assertSee('Pengirim Lain')
+        ->assertSee('alasan gagal');
+})->with([Role::Admin, Role::Auditor]);
+
+test('an email redirected by the trial address says so in the history', function () {
+    Mail::fake();
+    config(['mail.always_to' => 'trial@example.test']);
+    $admin = User::factory()->admin()->create();
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee]);
+    NonConformity::factory()->open()->create(['pic' => $pic->email]);
+
+    $this->actingAs($admin)->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]));
+
+    expect(ReminderEmail::sole())->redirected_to->toBe('trial@example.test');
+
+    $this->actingAs($admin)->get('/email-reminders')
+        ->assertSee(__('reminder.history.redirected', ['address' => 'trial@example.test']));
+});
+
+test('a page link of the history reopens its tab and stays on its own list', function () {
+    $admin = User::factory()->admin()->create();
+    reminderLog(ReminderEmail::FAILED, ['recipient_name' => 'Gagal Terlama', 'error' => 'x']);
+    foreach (range(1, 10) as $number) {
+        reminderLog(ReminderEmail::FAILED, ['recipient_name' => 'Gagal Baru', 'error' => 'x']);
+    }
+
+    $this->actingAs($admin)->get('/email-reminders')
+        ->assertDontSee('Gagal Terlama')
+        ->assertSee('failed_page=2', false);
+
+    $this->actingAs($admin)->get('/email-reminders?failed_page=2&q=abc')
+        ->assertOk()
+        ->assertSee("folder: 'failed'", false)
+        ->assertSee('Gagal Terlama');
 });
 
 test('the preview shows the first recipient without sending anything', function () {

@@ -7,12 +7,13 @@ use App\Http\Requests\FindingFilterRequest;
 use App\Http\Requests\ReminderMessageRequest;
 use App\Mail\FindingReminderMail;
 use App\Models\NonConformity;
+use App\Models\ReminderEmail;
 use App\Services\FindingReminders;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
-use Throwable;
 
 class EmailController extends Controller
 {
@@ -44,6 +45,9 @@ class EmailController extends Controller
         return view('pages.emailReminders.index', [
             'title' => __('reminder.title'),
             'findings' => $findings,
+            'folder' => $this->initialFolder($request),
+            'sentEmails' => $this->history($request, ReminderEmail::SENT),
+            'failedEmails' => $this->history($request, ReminderEmail::FAILED),
             // only PICs with an account have an email address to send to
             'recipients' => $reminders->recipients($pending),
             'filters' => $filters,
@@ -87,19 +91,38 @@ class EmailController extends Controller
             return $back->with('error', __('reminder.send.none'));
         }
 
-        $failed = 0;
-        foreach ($mails as $mail) {
-            try {
-                Mail::to($mail->recipient)->send($mail);
-            } catch (Throwable $exception) {
-                report($exception);
-                $failed++;
-            }
-        }
+        $failed = $mails->reject(fn (FindingReminderMail $mail) => $reminders->deliver($mail, $request->user()))->count();
 
+        // straight to the tab that shows what happened
         return $failed === 0
-            ? $back->with('success', __('reminder.send.sent', ['sent' => $mails->count()]))
-            : $back->with('error', __('reminder.send.partial', ['sent' => $mails->count() - $failed, 'failed' => $failed]));
+            ? $back->with('success', __('reminder.send.sent', ['sent' => $mails->count()]))->with('folder', 'sent')
+            : $back->with('error', __('reminder.send.partial', ['sent' => $mails->count() - $failed, 'failed' => $failed]))->with('folder', 'failed');
+    }
+
+    /**
+     * One tab of the send history, newest first. Its page links keep the filters of the page
+     * but no page number of another list, so a link always reopens this tab.
+     *
+     * @return LengthAwarePaginator<int, ReminderEmail>
+     */
+    private function history(FindingFilterRequest $request, string $status): LengthAwarePaginator
+    {
+        return ReminderEmail::query()
+            ->where('status', $status)
+            ->with('sender:id,name')
+            ->latest('id')
+            ->paginate(self::PER_PAGE, pageName: "{$status}_page")
+            ->appends(Arr::except($request->query(), ['page', 'sent_page', 'failed_page']));
+    }
+
+    /** The tab to open: the one a send just reported on, or the one whose page link was followed. */
+    private function initialFolder(FindingFilterRequest $request): string
+    {
+        return session('folder') ?? match (true) {
+            $request->has('failed_page') => 'failed',
+            $request->has('sent_page') => 'sent',
+            default => 'pending',
+        };
     }
 
     /**

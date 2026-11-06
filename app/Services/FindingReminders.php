@@ -4,9 +4,13 @@ namespace App\Services;
 
 use App\Mail\FindingReminderMail;
 use App\Models\NonConformity;
+use App\Models\ReminderEmail;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Turns the findings waiting for a repair photo into reminder emails: one per PIC, holding all
@@ -14,6 +18,35 @@ use Illuminate\Support\Collection;
  */
 class FindingReminders
 {
+    /**
+     * Send one email and record the attempt. A failure is recorded instead of thrown, so it
+     * does not stop the next email.
+     */
+    public function deliver(FindingReminderMail $mail, User $sender): bool
+    {
+        $error = null;
+
+        try {
+            Mail::to($mail->recipient)->send($mail);
+        } catch (Throwable $exception) {
+            report($exception);
+            $error = Str::limit($exception->getMessage(), 1000);
+        }
+
+        ReminderEmail::create([
+            'sender_id' => $sender->id,
+            'recipient_name' => $mail->recipient->name,
+            'recipient_email' => $mail->recipient->email,
+            'redirected_to' => config('mail.always_to') ?: null,
+            'subject' => Str::limit($mail->envelope()->subject, 250),
+            'findings_count' => $mail->findings->count(),
+            'status' => $error === null ? ReminderEmail::SENT : ReminderEmail::FAILED,
+            'error' => $error,
+        ]);
+
+        return $error === null;
+    }
+
     /**
      * The people who can be reminded about these findings, by name.
      *

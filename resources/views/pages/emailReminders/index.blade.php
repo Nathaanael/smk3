@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @php
-    // tabs of the email sidebar; the content of the sent and failed folders comes with the sending feature
+    // tabs of the email sidebar
     $folders = [
         'compose' => ['icon' => 'send', 'label' => __('reminder.compose.title'), 'description' => __('reminder.compose.description')],
         'pending' => ['icon' => 'envelope', 'label' => __('reminder.folders.pending'), 'description' => __('reminder.folders.pendingDesc')],
@@ -32,7 +32,7 @@
 
     {{-- a rejected message goes back to the tab where it was written --}}
     <div x-data="emailReminders({
-            folder: @js($errors->any() ? 'compose' : 'pending'),
+            folder: @js($errors->any() ? 'compose' : $folder),
             people: @js($recipients),
             picked: @js(old('recipients')),
             subject: @js(old('subject', __('reminder.compose.defaultSubject'))),
@@ -45,17 +45,17 @@
         <x-main.email-reminders.sidebar :folders="$folders" class="xl:w-72 xl:shrink-0" />
 
         <section class="min-w-0 flex-1 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3">
-            @foreach ($folders as $key => $folder)
-                <div x-show="folder === @js($key)" @if ($key !== 'pending') x-cloak @endif class="border-b border-gray-100 px-5 py-5 sm:px-6 dark:border-gray-800">
-                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ $folder['label'] }}</h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $folder['description'] }}</p>
+            @foreach ($folders as $key => $tab)
+                <div x-show="folder === @js($key)" x-cloak class="border-b border-gray-100 px-5 py-5 sm:px-6 dark:border-gray-800">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ $tab['label'] }}</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $tab['description'] }}</p>
                 </div>
             @endforeach
 
             <x-main.email-reminders.compose-form x-show="folder === 'compose'" x-cloak />
 
             {{-- same search and filters as the findings list, reloading only the results --}}
-            <div x-show="folder === 'pending'"
+            <div x-show="folder === 'pending'" x-cloak
                 x-data="nonConformityList({
                     url: @js(route('email-reminders')),
                     filters: @js($filters),
@@ -80,12 +80,8 @@
                 </div>
             </div>
 
-            <div x-show="folder === 'sent' || folder === 'failed'" x-cloak class="flex flex-col items-center gap-3 px-5 py-16 text-center sm:px-6">
-                <span class="flex size-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400">
-                    <x-svg.envelope class="size-6" />
-                </span>
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('smk3.comingSoon') }}</p>
-            </div>
+            <x-main.email-reminders.history-list x-show="folder === 'sent'" x-cloak :emails="$sentEmails" :empty="__('reminder.history.emptySent')" />
+            <x-main.email-reminders.history-list x-show="folder === 'failed'" x-cloak :emails="$failedEmails" :empty="__('reminder.history.emptyFailed')" show-error />
         </section>
 
         {{-- "send email" of the needs reminder tab: choose the people, using the written message --}}
