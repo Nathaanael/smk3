@@ -70,6 +70,14 @@ Alpine.data("emailReminders", emailReminders);
 Alpine.data("reminderHistory", reminderHistory);
 Alpine.data("nonConformityList", nonConformityList);
 Alpine.data("progressMonitor", progressMonitor);
+// same filters as Progress Monitoring; the reloaded HTML holds new chart elements to start
+Alpine.data("dashboardSummary", (config) => progressMonitor({
+    ...config,
+    render(html) {
+        this.$refs.results.replaceChildren(html.content);
+        initCharts(this.$refs.results);
+    },
+}));
 Alpine.data("findingForm", findingForm);
 Alpine.data("findingPhotoViewer", findingPhotoViewer);
 Alpine.data("clauseMaster", clauseMaster);

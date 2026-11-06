@@ -14,7 +14,16 @@ export const readConfig = (el) => JSON.parse(el.dataset.config || '{}');
 export function mountChart(el, build) {
     const chart = new ApexCharts(el, build(isDark()));
     chart.render();
-    new MutationObserver(() => chart.updateOptions(build(isDark()))).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    const themeObserver = new MutationObserver(() => {
+        // the element is gone when a filter change replaced the charts
+        if (!el.isConnected) {
+            themeObserver.disconnect();
+            chart.destroy();
+            return;
+        }
+        chart.updateOptions(build(isDark()));
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     return chart;
 }

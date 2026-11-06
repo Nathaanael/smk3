@@ -143,6 +143,13 @@ class NonConformity extends Model
         $query->whereIn('pabrik', $plants);
     }
 
+    /** Findings dated within a period; a missing date leaves that side open. */
+    public function scopeInPeriod(Builder $query, ?string $from, ?string $to): void
+    {
+        $query->when($from, fn (Builder $query) => $query->whereDate('tanggal', '>=', $from))
+            ->when($to, fn (Builder $query) => $query->whereDate('tanggal', '<=', $to));
+    }
+
     /**
      * Open findings without a repair photo: the ones the email reminder is about.
      */

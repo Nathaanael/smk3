@@ -6,10 +6,21 @@
  *   filters      – current values (pabrik, dari, sampai)
  *   currentMonth – [first day, last day] of this month, for the "This month" button
  *
+ *   render       – optional; puts the loaded HTML on the page (other pages built on these filters)
+ *
  * Empty dates mean "all dates", which is also the server's default.
  */
-export default ({ url, filters = {}, currentMonth = ['', ''] }) => ({
+function renderRecap(html) {
+    // the response holds both fragments: the example goes to the guide, the rest to the results
+    const example = html.content.querySelector('[data-score-example]');
+    example.remove();
+    this.$refs.example.replaceChildren(example);
+    this.$refs.results.replaceChildren(html.content);
+}
+
+export default ({ url, filters = {}, currentMonth = ['', ''], render = renderRecap }) => ({
     url,
+    render,
     pabrik: filters.pabrik ?? '',
     dari: filters.dari ?? '',
     sampai: filters.sampai ?? '',
@@ -51,13 +62,9 @@ export default ({ url, filters = {}, currentMonth = ['', ''] }) => ({
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            // the response holds both fragments: the example goes to the guide, the rest to the results
             const html = document.createElement('template');
             html.innerHTML = await response.text();
-            const example = html.content.querySelector('[data-score-example]');
-            example.remove();
-            this.$refs.example.replaceChildren(example);
-            this.$refs.results.replaceChildren(html.content);
+            this.render(html);
 
             window.history.replaceState(null, '', target);
         } catch (error) {

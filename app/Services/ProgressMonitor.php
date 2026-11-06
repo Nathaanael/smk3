@@ -39,8 +39,7 @@ class ProgressMonitor
     {
         $findings = NonConformity::query()
             ->where('pabrik', $plant)
-            ->when($from, fn ($query) => $query->whereDate('tanggal', '>=', $from))
-            ->when($to, fn ($query) => $query->whereDate('tanggal', '<=', $to))
+            ->inPeriod($from, $to)
             ->get(['id', 'departemen', 'no_klausul', 'kategori', 'status']);
 
         $criteria = Smk3Criterion::count() ?: self::LEGACY_CRITERIA;

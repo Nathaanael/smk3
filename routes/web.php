@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Email\EmailController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\Master\AuditeeController;
@@ -31,9 +32,7 @@ Route::middleware('auth')->group(function () {
     // send users to the web root's /dashboard (the XAMPP welcome page) instead of /smk3/dashboard.
     Route::get('/', fn () => redirect()->route('dashboard.index'))->name('dashboard');
 
-    Route::get('/dashboard', function () {
-        return view('pages.dashboard.index', ['title' => 'Dashboard']);
-    })->name('dashboard.index');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('remember.filters')->name('dashboard.index');
 
     // old admin-only URL, kept so bookmarks still work
     Route::get('/admin/dashboard', fn () => redirect()->route('dashboard.index', status: 301));
