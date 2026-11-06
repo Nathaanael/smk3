@@ -19,7 +19,7 @@
     // Monday first; the day names follow the active language
     $weekdays = collect(range(1, 7))->mapWithKeys(fn (int $day) => [$day => Carbon::now()->startOfWeek(Carbon::MONDAY)->addDays($day - 1)->translatedFormat('l')]);
 @endphp
-<form id="reminder-form" method="POST" action="{{ route('email-reminders.send') }}" {{ $attributes->merge(['class' => 'flex flex-col gap-5 px-5 py-5 sm:px-6']) }}
+<form id="reminder-form" method="POST" target="_blank" action="{{ route('email-reminders.preview') }}" {{ $attributes->merge(['class' => 'flex flex-col gap-5 px-5 py-5 sm:px-6']) }}
     x-data="{
         mode: 'manual',
         frequency: 'weekly',
@@ -144,7 +144,7 @@
         <p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ __('reminder.compose.notReady') }}</p>
         <div class="flex shrink-0 flex-col gap-3 sm:flex-row">
             <x-ui.button variant="outline" x-show="mode === 'manual'" x-bind:disabled="!pickedIds.length"
-                x-on:click="submitTo(previewUrl, '_blank')">
+                x-on:click="openPreview()">
                 {{ __('reminder.compose.preview') }}
             </x-ui.button>
             <x-ui.button x-show="mode === 'manual'" x-bind:disabled="!pickedIds.length || sending" x-on:click="$dispatch('reminder-confirm')">
@@ -169,7 +169,7 @@
                 <x-ui.dialog.close as-child>
                     <x-ui.button variant="outline">{{ __('nc.create.cancel') }}</x-ui.button>
                 </x-ui.dialog.close>
-                <x-ui.button x-on:click="close(); submitTo(sendUrl, '_self')">{{ __('reminder.send.confirm') }}</x-ui.button>
+                <x-ui.button x-on:click="close(); sendEmails()">{{ __('reminder.send.confirm') }}</x-ui.button>
             </div>
         </x-ui.dialog.content>
     </x-ui.dialog>

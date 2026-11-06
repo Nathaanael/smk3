@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,11 +24,6 @@ class AppServiceProvider extends ServiceProvider
         // Force HTTPS only when the app is served over HTTPS (APP_URL)
         if (str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');
-        }
-
-        // Trying out the real mail server: everything goes to this one address (MAIL_ALWAYS_TO)
-        if ($address = config('mail.always_to')) {
-            Mail::alwaysTo($address);
         }
 
         // Blade Component Aliases for main feature modules

@@ -32,19 +32,39 @@
 
     {{-- a rejected message goes back to the tab where it was written --}}
     <div x-data="emailReminders({
-            folder: @js($errors->any() ? 'compose' : $folder),
+            folder: @js($errors->any() ? 'compose' : 'pending'),
             people: @js($recipients),
             picked: @js(old('recipients')),
             subject: @js(old('subject', __('reminder.compose.defaultSubject'))),
             message: @js(old('message', __('reminder.compose.defaultMessage'))),
             sendUrl: @js(route('email-reminders.send')),
             previewUrl: @js(route('email-reminders.preview')),
+            labels: @js([
+                'sent' => __('reminder.send.sent'),
+                'partial' => __('reminder.send.partial'),
+                'stopped' => __('reminder.send.stopped'),
+                'interrupted' => __('reminder.send.interrupted'),
+                'none' => __('reminder.send.none'),
+                'connection' => __('reminder.send.connection'),
+            ]),
         })"
         x-on:reminder-recipients="people = $event.detail.list"
         class="flex flex-col gap-6 xl:flex-row xl:items-start">
         <x-main.email-reminders.sidebar :folders="$folders" class="xl:w-72 xl:shrink-0" />
 
         <section class="min-w-0 flex-1 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3">
+            {{-- how the last send ended --}}
+            <div x-show="result" x-cloak class="px-5 pt-5 sm:px-6">
+                <x-ui.alert variant="success" class="px-4 py-3" x-show="result?.type === 'success'">
+                    <x-svg.check-circle />
+                    <x-ui.alert.title class="text-sm" x-text="result?.message"></x-ui.alert.title>
+                </x-ui.alert>
+                <x-ui.alert variant="destructive" class="px-4 py-3" x-show="result?.type === 'error'">
+                    <x-svg.alert />
+                    <x-ui.alert.title class="text-sm" x-text="result?.message"></x-ui.alert.title>
+                </x-ui.alert>
+            </div>
+
             @foreach ($folders as $key => $tab)
                 <div x-show="folder === @js($key)" x-cloak class="border-b border-gray-100 px-5 py-5 sm:px-6 dark:border-gray-800">
                     <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">{{ $tab['label'] }}</h3>
@@ -80,9 +100,11 @@
                 </div>
             </div>
 
-            <x-main.email-reminders.history-list x-show="folder === 'sent'" x-cloak :emails="$sentEmails" :empty="__('reminder.history.emptySent')" />
-            <x-main.email-reminders.history-list x-show="folder === 'failed'" x-cloak :emails="$failedEmails" :empty="__('reminder.history.emptyFailed')" show-error />
+            <x-main.email-reminders.history-panel x-show="folder === 'sent'" x-cloak status="sent" :emails="$sentEmails" :senders="$senders" />
+            <x-main.email-reminders.history-panel x-show="folder === 'failed'" x-cloak status="failed" :emails="$failedEmails" :senders="$senders" />
         </section>
+
+        <x-main.email-reminders.send-progress />
 
         {{-- "send email" of the needs reminder tab: choose the people, using the written message --}}
         <x-ui.dialog x-on:reminder-pick.window="show()">
@@ -105,7 +127,7 @@
                         <x-ui.button variant="outline">{{ __('nc.create.cancel') }}</x-ui.button>
                     </x-ui.dialog.close>
                     <x-ui.button variant="outline" x-on:click="close(); folder = 'compose'">{{ __('reminder.pick.editMessage') }}</x-ui.button>
-                    <x-ui.button x-bind:disabled="!pickedIds.length || sending" x-on:click="close(); submitTo(sendUrl, '_self')">
+                    <x-ui.button x-bind:disabled="!pickedIds.length || sending" x-on:click="close(); sendEmails()">
                         <span x-text="@js(__('reminder.pick.send')).replace(':count', pickedIds.length)"></span>
                     </x-ui.button>
                 </div>

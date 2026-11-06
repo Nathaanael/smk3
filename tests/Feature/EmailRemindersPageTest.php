@@ -5,7 +5,6 @@ use App\Mail\FindingReminderMail;
 use App\Models\NonConformity;
 use App\Models\ReminderEmail;
 use App\Models\User;
-use App\Providers\AppServiceProvider;
 use App\Services\FindingReminders;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -44,7 +43,7 @@ test('the write message tab can send manually, while the schedule and attachment
     expect($response->getContent())
         ->toContain('name="subject"')
         ->toContain('name="message"')
-        ->toContain(route('email-reminders.send'))
+        ->toContain('email-reminders\/send')
         ->toContain('email-reminders\/preview')
         ->not->toContain('@js(')
         ->toMatch('/<input[^>]*disabled[^>]*x-model="attachPdf"/')
@@ -68,9 +67,9 @@ test('each PIC gets one email holding all of their findings', function () {
         ->photos()->create(['field' => 'foto_perbaikan', 'path' => 'uploads/a.jpg']);
 
     $this->actingAs(User::factory()->admin()->create())
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$budi->id, $sari->id]]))
-        ->assertRedirect(route('email-reminders'))
-        ->assertSessionHas('success', __('reminder.send.sent', ['sent' => 2]));
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$budi->id, $sari->id]]))
+        ->assertOk()
+        ->assertExactJson(['sent' => 2, 'failed' => 0]);
 
     Mail::assertSentCount(2);
     Mail::assertSent(FindingReminderMail::class, fn (FindingReminderMail $mail) => $mail->hasTo($budi->email) && $mail->findings->count() === 2);
@@ -85,8 +84,8 @@ test('only the chosen people get an email', function () {
     NonConformity::factory()->open()->create(['pic' => $sari->email]);
 
     $this->actingAs(User::factory()->admin()->create())
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$sari->id]]))
-        ->assertSessionHas('success', __('reminder.send.sent', ['sent' => 1]));
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$sari->id]]))
+        ->assertExactJson(['sent' => 1, 'failed' => 0]);
 
     Mail::assertSentCount(1);
     Mail::assertSent(FindingReminderMail::class, fn (FindingReminderMail $mail) => $mail->hasTo($sari->email));
@@ -98,8 +97,8 @@ test('someone without findings in the list cannot be emailed by asking for their
     NonConformity::factory()->closed()->create(['pic' => $stranger->email]);
 
     $this->actingAs(User::factory()->admin()->create())
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$stranger->id]]))
-        ->assertSessionHas('error', __('reminder.send.none'));
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$stranger->id]]))
+        ->assertExactJson(['sent' => 0, 'failed' => 0]);
 
     Mail::assertNothingSent();
 });
@@ -108,9 +107,8 @@ test('at least one recipient has to be chosen', function () {
     Mail::fake();
 
     $this->actingAs(User::factory()->admin()->create())
-        ->from('/email-reminders')
-        ->post(route('email-reminders.send'), reminderMessage())
-        ->assertSessionHasErrors('recipients');
+        ->postJson(route('email-reminders.send'), reminderMessage())
+        ->assertJsonValidationErrors('recipients');
 
     Mail::assertNothingSent();
 });
@@ -185,8 +183,8 @@ test('sending follows the filters and the plants of the user', function () {
     $auditor = User::factory()->create(['otorisasi' => Role::Auditor, 'pabrik' => $plant]);
 
     $this->actingAs($auditor)
-        ->post(route('email-reminders.send', ['kategori' => $category]), reminderMessage(['recipients' => [$own->id, $other->id]]))
-        ->assertRedirect(route('email-reminders', ['kategori' => $category]));
+        ->postJson(route('email-reminders.send', ['kategori' => $category]), reminderMessage(['recipients' => [$own->id, $other->id]]))
+        ->assertExactJson(['sent' => 1, 'failed' => 0]);
 
     Mail::assertSentCount(1);
     Mail::assertSent(FindingReminderMail::class, fn (FindingReminderMail $mail) => $mail->hasTo($own->email));
@@ -197,20 +195,24 @@ test('nothing is sent when there are no recipients', function () {
     NonConformity::factory()->open()->create(['pic' => 'gone@example.test']);
 
     $this->actingAs(User::factory()->admin()->create())
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [999]]))
-        ->assertSessionHas('error', __('reminder.send.none'));
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [999]]))
+        ->assertExactJson(['sent' => 0, 'failed' => 0]);
 
     Mail::assertNothingSent();
 });
 
-test('a subject and message are required, and the rejected message returns to its tab', function () {
+test('a subject is required: sending answers with the reason, and a rejected preview returns to its tab', function () {
     Mail::fake();
     $admin = User::factory()->admin()->create();
     NonConformity::factory()->open()->create(['pic' => User::factory()->create(['otorisasi' => Role::Auditee])->email]);
 
     $this->actingAs($admin)
+        ->postJson(route('email-reminders.send'), reminderMessage(['subject' => '', 'recipients' => [1]]))
+        ->assertJsonValidationErrors('subject');
+
+    $this->actingAs($admin)
         ->from('/email-reminders')
-        ->post(route('email-reminders.send'), ['subject' => '', 'message' => 'isi yang ditulis'])
+        ->post(route('email-reminders.preview'), ['subject' => '', 'message' => 'isi yang ditulis'])
         ->assertRedirect('/email-reminders')
         ->assertSessionHasErrors('subject');
 
@@ -227,9 +229,9 @@ test('a mail server that cannot be reached shows as failed instead of an error p
     NonConformity::factory()->open()->create(['pic' => $pic->email]);
 
     $this->actingAs(User::factory()->admin()->create())
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
-        ->assertRedirect(route('email-reminders'))
-        ->assertSessionHas('error', __('reminder.send.partial', ['sent' => 0, 'failed' => 1]));
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
+        ->assertOk()
+        ->assertExactJson(['sent' => 0, 'failed' => 1]);
 });
 
 function reminderLog(string $status, array $attributes = []): ReminderEmail
@@ -250,8 +252,8 @@ test('a failed email is recorded with its reason and shown on the failed tab', f
     NonConformity::factory()->open()->count(2)->create(['pic' => $pic->email]);
 
     $this->actingAs($admin)
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
-        ->assertSessionHas('folder', 'failed');
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
+        ->assertExactJson(['sent' => 0, 'failed' => 1]);
 
     $log = ReminderEmail::sole();
     expect($log)
@@ -264,7 +266,6 @@ test('a failed email is recorded with its reason and shown on the failed tab', f
 
     $this->actingAs($admin)->get('/email-reminders')
         ->assertOk()
-        ->assertSee("folder: 'failed'", false)
         ->assertSee('Connection could not be established')
         ->assertSee(__('reminder.history.error'));
 });
@@ -276,13 +277,12 @@ test('a sent email is recorded and shown on the sent tab', function () {
     NonConformity::factory()->open()->create(['pic' => $pic->email]);
 
     $this->actingAs($admin)
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
-        ->assertSessionHas('folder', 'sent');
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
+        ->assertExactJson(['sent' => 1, 'failed' => 0]);
 
     expect(ReminderEmail::sole())->status->toBe(ReminderEmail::SENT)->error->toBeNull();
 
     $this->actingAs($admin)->get('/email-reminders')
-        ->assertSee("folder: 'sent'", false)
         ->assertSee(__('reminder.history.showing', ['from' => 1, 'to' => 1, 'total' => 1]))
         ->assertSee(__('reminder.history.emptyFailed'))
         ->assertDontSee(__('reminder.history.error'));
@@ -301,36 +301,114 @@ test('admins and auditors see the whole send history', function (Role $role) {
         ->assertSee('alasan gagal');
 })->with([Role::Admin, Role::Auditor]);
 
-test('an email redirected by the trial address says so in the history', function () {
-    Mail::fake();
-    config(['mail.always_to' => 'trial@example.test']);
-    $admin = User::factory()->admin()->create();
+test('emails go to the real recipient and new records are not marked as a trial', function () {
     $pic = User::factory()->create(['otorisasi' => Role::Auditee]);
     NonConformity::factory()->open()->create(['pic' => $pic->email]);
 
-    $this->actingAs($admin)->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]));
+    $this->actingAs(User::factory()->admin()->create())
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
+        ->assertExactJson(['sent' => 1, 'failed' => 0]);
 
-    expect(ReminderEmail::sole())->redirected_to->toBe('trial@example.test');
+    $sent = Mail::mailer()->getSymfonyTransport()->messages();
 
-    $this->actingAs($admin)->get('/email-reminders')
+    expect(array_map(fn ($address) => $address->getAddress(), $sent->sole()->getEnvelope()->getRecipients()))->toBe([$pic->email])
+        ->and(ReminderEmail::sole()->redirected_to)->toBeNull();
+});
+
+test('a trial send from before going live still says where it really went', function () {
+    reminderLog(ReminderEmail::SENT, ['redirected_to' => 'trial@example.test']);
+
+    $this->actingAs(User::factory()->admin()->create())->get('/email-reminders')
         ->assertSee(__('reminder.history.redirected', ['address' => 'trial@example.test']));
 });
 
-test('a page link of the history reopens its tab and stays on its own list', function () {
+test('the history tabs have pagination, a page size and their own results', function () {
     $admin = User::factory()->admin()->create();
-    reminderLog(ReminderEmail::FAILED, ['recipient_name' => 'Gagal Terlama', 'error' => 'x']);
+    reminderLog(ReminderEmail::FAILED, ['recipient_name' => 'Gagal Lain', 'error' => 'x']);
+    reminderLog(ReminderEmail::SENT, ['recipient_name' => 'Terkirim Terlama']);
     foreach (range(1, 10) as $number) {
-        reminderLog(ReminderEmail::FAILED, ['recipient_name' => 'Gagal Baru', 'error' => 'x']);
+        reminderLog(ReminderEmail::SENT, ['recipient_name' => 'Terkirim Baru']);
     }
 
     $this->actingAs($admin)->get('/email-reminders')
-        ->assertDontSee('Gagal Terlama')
-        ->assertSee('failed_page=2', false);
-
-    $this->actingAs($admin)->get('/email-reminders?failed_page=2&q=abc')
         ->assertOk()
-        ->assertSee("folder: 'failed'", false)
-        ->assertSee('Gagal Terlama');
+        ->assertDontSee('Terkirim Terlama')
+        ->assertSee(route('email-reminders.history', ['status' => 'sent', 'page' => 2]), false)
+        ->assertSee('history-sent-per-page', false);
+
+    $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'page' => 2]))
+        ->assertOk()
+        ->assertSee('Terkirim Terlama')
+        ->assertDontSee('Gagal Lain')
+        ->assertDontSee('<html', false);
+
+    $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'per_page' => 25]))
+        ->assertSee('Terkirim Terlama');
+
+    $this->actingAs($admin)->get(route('email-reminders.history', 'failed'))
+        ->assertSee('Gagal Lain')
+        ->assertDontSee('Terkirim Baru')
+        ->assertSee(__('reminder.history.error'));
+
+    $this->actingAs($admin)->get('/email-reminders/history/other')->assertNotFound();
+});
+
+test('the history can be searched and filtered by sender', function () {
+    $admin = User::factory()->admin()->create();
+    $sender = User::factory()->admin()->create(['name' => 'Pengirim Pilihan']);
+    reminderLog(ReminderEmail::SENT, ['sender_id' => $sender->id, 'recipient_name' => 'Cocok Nama', 'recipient_email' => 'cocok@example.test', 'subject' => 'Subjek Khusus']);
+    reminderLog(ReminderEmail::SENT, ['sender_id' => $admin->id, 'recipient_name' => 'Tidak Cocok', 'recipient_email' => 'lain@example.test']);
+
+    foreach (['Cocok Nama', 'cocok@example', 'Subjek Khusus'] as $search) {
+        $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'q' => $search]))
+            ->assertSee('cocok@example.test')
+            ->assertDontSee('lain@example.test');
+    }
+
+    $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'sender' => $sender->id]))
+        ->assertSee('cocok@example.test')
+        ->assertDontSee('lain@example.test');
+
+    $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'q' => 'tidak-ada']))
+        ->assertSee(__('reminder.history.noMatch'));
+
+    // the sender filter offers who sent something, not every user
+    User::factory()->admin()->create(['name' => 'Belum Pernah Mengirim']);
+    $this->actingAs($admin)->get('/email-reminders')
+        ->assertSee('Pengirim Pilihan')
+        ->assertDontSee('Belum Pernah Mengirim');
+});
+
+test('the history date filter follows the Jakarta date, not the stored UTC date', function () {
+    $admin = User::factory()->admin()->create();
+    $log = reminderLog(ReminderEmail::SENT, ['recipient_email' => 'malam@example.test']);
+    // 18:00 UTC on the 10th is already 01:00 on the 11th in Jakarta
+    $log->created_at = '2026-01-10 18:00:00';
+    $log->save();
+
+    $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'dari' => '2026-01-11', 'sampai' => '2026-01-11']))
+        ->assertSee('malam@example.test');
+
+    $this->actingAs($admin)->get(route('email-reminders.history', ['status' => 'sent', 'sampai' => '2026-01-10']))
+        ->assertDontSee('malam@example.test');
+});
+
+test('auditees cannot see the history', function () {
+    $this->actingAs(User::factory()->create(['otorisasi' => Role::Auditee]))
+        ->get(route('email-reminders.history', 'sent'))
+        ->assertForbidden();
+});
+
+test('sending shows a loading bar and no longer posts the page', function () {
+    $response = $this->actingAs(User::factory()->admin()->create())->get('/email-reminders')
+        ->assertOk()
+        ->assertSee('role="progressbar"', false)
+        ->assertSee(__('reminder.progress.stop'))
+        ->assertSee('close(); sendEmails()', false);
+
+    expect($response->getContent())
+        ->not->toContain('submitTo(')
+        ->not->toContain('@js(');
 });
 
 test('the preview shows the first recipient without sending anything', function () {
@@ -348,25 +426,6 @@ test('the preview shows the first recipient without sending anything', function 
 
     expect($response->viewData('html'))->toContain('lantai licin');
     Mail::assertNothingSent();
-});
-
-test('with a trial address the email goes there and not to the real recipient', function () {
-    config(['mail.always_to' => 'trial@example.test']);
-    (new AppServiceProvider(app()))->boot();
-
-    $pic = User::factory()->create(['otorisasi' => Role::Auditee, 'name' => 'Budi Auditee']);
-    NonConformity::factory()->open()->create(['pic' => $pic->email, 'deskripsi_temuan' => 'lantai licin']);
-
-    $this->actingAs(User::factory()->admin()->create())
-        ->post(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id]]))
-        ->assertSessionHas('success');
-
-    $sent = Mail::mailer()->getSymfonyTransport()->messages();
-
-    expect($sent)->toHaveCount(1)
-        ->and(array_map(fn ($address) => $address->getAddress(), $sent->first()->getEnvelope()->getRecipients()))->toBe(['trial@example.test'])
-        // still the real recipient's content, so it can be checked
-        ->and($sent->first()->getOriginalMessage()->getHtmlBody())->toContain('lantai licin');
 });
 
 test('auditees cannot preview or send reminders', function () {

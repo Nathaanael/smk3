@@ -37,7 +37,6 @@ class FindingReminders
             'sender_id' => $sender->id,
             'recipient_name' => $mail->recipient->name,
             'recipient_email' => $mail->recipient->email,
-            'redirected_to' => config('mail.always_to') ?: null,
             'subject' => Str::limit($mail->envelope()->subject, 250),
             'findings_count' => $mail->findings->count(),
             'status' => $error === null ? ReminderEmail::SENT : ReminderEmail::FAILED,

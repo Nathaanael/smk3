@@ -10,6 +10,7 @@ use App\Http\Controllers\NonConfirmities\FindingActionsController;
 use App\Http\Controllers\NonConfirmities\FindingExportController;
 use App\Http\Controllers\NonConfirmities\NonConfirmitiesController;
 use App\Http\Controllers\ProgressMonitoring\ProgressMonitoringController;
+use App\Models\ReminderEmail;
 use Illuminate\Support\Facades\Route;
 
 // authentication
@@ -72,7 +73,11 @@ Route::middleware('auth')->group(function () {
         ->name('email-reminders');
     Route::middleware('role:admin,auditor')->group(function () {
         Route::post('/email-reminders/preview', [EmailController::class, 'preview'])->name('email-reminders.preview');
-        Route::post('/email-reminders/send', [EmailController::class, 'send'])->middleware('throttle:10,1')->name('email-reminders.send');
+        // called once per recipient, so the limit has to leave room for a long list
+        Route::post('/email-reminders/send', [EmailController::class, 'send'])->middleware('throttle:600,1')->name('email-reminders.send');
+        Route::get('/email-reminders/history/{status}', [EmailController::class, 'history'])
+            ->whereIn('status', [ReminderEmail::SENT, ReminderEmail::FAILED])
+            ->name('email-reminders.history');
     });
 
     // master data (admin and auditor)

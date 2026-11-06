@@ -115,17 +115,4 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Trial Address
-    |--------------------------------------------------------------------------
-    |
-    | When set, every email goes to this address instead of its real recipients,
-    | so the real mail server can be tried without reaching anyone else. Leave
-    | it empty to send to the real recipients.
-    |
-    */
-
-    'always_to' => env('MAIL_ALWAYS_TO'),
-
 ];

@@ -8,11 +8,14 @@ use App\Http\Requests\ReminderMessageRequest;
 use App\Mail\FindingReminderMail;
 use App\Models\NonConformity;
 use App\Models\ReminderEmail;
+use App\Models\User;
 use App\Services\FindingReminders;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Arr;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class EmailController extends Controller
@@ -45,9 +48,9 @@ class EmailController extends Controller
         return view('pages.emailReminders.index', [
             'title' => __('reminder.title'),
             'findings' => $findings,
-            'folder' => $this->initialFolder($request),
-            'sentEmails' => $this->history($request, ReminderEmail::SENT),
-            'failedEmails' => $this->history($request, ReminderEmail::FAILED),
+            'sentEmails' => $this->historyPage(ReminderEmail::SENT),
+            'failedEmails' => $this->historyPage(ReminderEmail::FAILED),
+            'senders' => $this->senders(),
             // only PICs with an account have an email address to send to
             'recipients' => $reminders->recipients($pending),
             'filters' => $filters,
@@ -80,49 +83,67 @@ class EmailController extends Controller
     }
 
     /**
-     * Send one email to each chosen PIC of the filtered list. One failing address does not stop the others.
+     * Send one email to each chosen PIC of the filtered list. One failing address does not stop the
+     * others. The page calls this once per person, to show the progress in a loading bar.
      */
-    public function send(ReminderMessageRequest $request, FindingReminders $reminders): RedirectResponse
+    public function send(ReminderMessageRequest $request, FindingReminders $reminders): JsonResponse
     {
         $mails = $this->mails($request, $reminders);
-        $back = redirect()->route('email-reminders', $request->query());
-
-        if ($mails->isEmpty()) {
-            return $back->with('error', __('reminder.send.none'));
-        }
-
         $failed = $mails->reject(fn (FindingReminderMail $mail) => $reminders->deliver($mail, $request->user()))->count();
 
-        // straight to the tab that shows what happened
-        return $failed === 0
-            ? $back->with('success', __('reminder.send.sent', ['sent' => $mails->count()]))->with('folder', 'sent')
-            : $back->with('error', __('reminder.send.partial', ['sent' => $mails->count() - $failed, 'failed' => $failed]))->with('folder', 'failed');
+        return response()->json(['sent' => $mails->count() - $failed, 'failed' => $failed]);
     }
 
     /**
-     * One tab of the send history, newest first. Its page links keep the filters of the page
-     * but no page number of another list, so a link always reopens this tab.
+     * The results of one history tab, for its search, filters and page links.
+     */
+    public function history(Request $request, string $status): View
+    {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'sender' => ['nullable', 'integer'],
+            'dari' => ['nullable', 'date'],
+            'sampai' => ['nullable', 'date', 'after_or_equal:dari'],
+            'per_page' => ['nullable', 'integer', Rule::in(FindingFilterRequest::PER_PAGE_OPTIONS)],
+        ]);
+
+        return view('pages.emailReminders.history', [
+            'emails' => $this->historyPage($status, $filters),
+            'status' => $status,
+            'filtered' => collect($filters)->except('per_page')->filter()->isNotEmpty(),
+        ]);
+    }
+
+    /**
+     * One page of a history tab, newest first.
      *
+     * @param  array<string, mixed>  $filters
      * @return LengthAwarePaginator<int, ReminderEmail>
      */
-    private function history(FindingFilterRequest $request, string $status): LengthAwarePaginator
+    private function historyPage(string $status, array $filters = []): LengthAwarePaginator
     {
         return ReminderEmail::query()
             ->where('status', $status)
+            ->matching($filters)
             ->with('sender:id,name')
             ->latest('id')
-            ->paginate(self::PER_PAGE, pageName: "{$status}_page")
-            ->appends(Arr::except($request->query(), ['page', 'sent_page', 'failed_page']));
+            ->paginate($filters['per_page'] ?? self::PER_PAGE)
+            ->withPath(route('email-reminders.history', $status))
+            ->appends(array_filter($filters));
     }
 
-    /** The tab to open: the one a send just reported on, or the one whose page link was followed. */
-    private function initialFolder(FindingFilterRequest $request): string
+    /**
+     * Who sent something so far, for the sender filter of the history.
+     *
+     * @return array<int, string>
+     */
+    private function senders(): array
     {
-        return session('folder') ?? match (true) {
-            $request->has('failed_page') => 'failed',
-            $request->has('sent_page') => 'sent',
-            default => 'pending',
-        };
+        return User::query()
+            ->whereIn('id', ReminderEmail::query()->select('sender_id'))
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
     }
 
     /**
