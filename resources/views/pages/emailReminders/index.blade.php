@@ -25,11 +25,6 @@
         </x-ui.alert>
     @endif
 
-    <x-ui.alert variant="warning" class="mb-6 px-4 py-3">
-        <x-svg.alert />
-        <x-ui.alert.title class="text-sm">{{ __('smk3.comingSoon') }}</x-ui.alert.title>
-    </x-ui.alert>
-
     {{-- a rejected message goes back to the tab where it was written --}}
     <div x-data="emailReminders({
             folder: @js($errors->any() ? 'compose' : 'pending'),
@@ -120,6 +115,10 @@
                 <p class="rounded-lg bg-gray-50 px-3 py-2 text-theme-xs text-gray-700 dark:bg-white/5 dark:text-gray-300">
                     <span class="font-medium">{{ __('reminder.compose.subject') }}:</span>
                     <span x-text="subject"></span>
+                    <span class="mt-1 block">
+                        <span class="font-medium">{{ __('reminder.compose.attachments') }}:</span>
+                        <span x-text="[attachPdf && 'PDF', attachExcel && 'Excel'].filter(Boolean).join(', ') || @js(__('reminder.pick.noAttachments'))"></span>
+                    </span>
                 </p>
 
                 <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

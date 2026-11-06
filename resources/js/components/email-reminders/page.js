@@ -23,6 +23,8 @@ export default ({ folder = 'pending', people = [], picked = null, subject = '', 
     personSearch: '',
     subject,
     message,
+    attachPdf: false,
+    attachExcel: false,
     sending: false,
     stopRequested: false,
     progress: { total: 0, done: 0, sent: 0, failed: 0 },
@@ -81,7 +83,7 @@ export default ({ folder = 'pending', people = [], picked = null, subject = '', 
         // what was confirmed, even if the filters or the text change while this runs
         const ids = [...this.pickedIds];
         const url = sendUrl + window.location.search;
-        const payload = { subject: this.subject, message: this.message };
+        const payload = { subject: this.subject, message: this.message, attachments: [this.attachPdf && 'pdf', this.attachExcel && 'xlsx'].filter(Boolean) };
 
         this.progress = { total: ids.length, done: 0, sent: 0, failed: 0 };
         this.result = null;

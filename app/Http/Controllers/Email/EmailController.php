@@ -79,6 +79,7 @@ class EmailController extends Controller
             'subject' => $mail->envelope()->subject,
             'html' => $mail->render(),
             'recipients' => $mails->count(),
+            'attachments' => $mail->attachmentNames(),
         ]);
     }
 
@@ -88,6 +89,9 @@ class EmailController extends Controller
      */
     public function send(ReminderMessageRequest $request, FindingReminders $reminders): JsonResponse
     {
+        // building a report with many photos takes a while
+        set_time_limit(300);
+
         $mails = $this->mails($request, $reminders);
         $failed = $mails->reject(fn (FindingReminderMail $mail) => $reminders->deliver($mail, $request->user()))->count();
 
@@ -156,6 +160,7 @@ class EmailController extends Controller
             $request->validated('subject'),
             $request->validated('message'),
             $request->validated('recipients'),
+            $request->validated('attachments') ?? [],
         );
     }
 }

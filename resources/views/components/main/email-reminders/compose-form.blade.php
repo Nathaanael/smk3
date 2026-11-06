@@ -1,15 +1,15 @@
 {{--
     "Write message" tab of the email reminder page: who it goes to, the subject and message, and how
-    it is sent. Uses the surrounding emailReminders Alpine component. Attachments and the schedule
-    are layout only for now, so those stay disabled.
+    it is sent. Uses the surrounding emailReminders Alpine component. The schedule is layout only
+    for now, so it stays disabled.
 --}}
 @use('Illuminate\Support\Carbon')
 @php
     $labelClass = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400';
-    $checkboxClass = 'mt-0.5 size-4 shrink-0 cursor-not-allowed rounded border-gray-300 accent-brand-500 dark:border-gray-700';
+    $checkboxClass = 'mt-0.5 size-4 shrink-0 cursor-pointer rounded border-gray-300 accent-brand-500 dark:border-gray-700';
     $attachments = [
-        'attachPdf' => ['label' => __('reminder.compose.attachPdf'), 'description' => __('reminder.compose.attachPdfDesc')],
-        'attachExcel' => ['label' => __('reminder.compose.attachExcel'), 'description' => __('reminder.compose.attachExcelDesc')],
+        'attachPdf' => ['value' => 'pdf', 'label' => __('reminder.compose.attachPdf'), 'description' => __('reminder.compose.attachPdfDesc')],
+        'attachExcel' => ['value' => 'xlsx', 'label' => __('reminder.compose.attachExcel'), 'description' => __('reminder.compose.attachExcelDesc')],
     ];
     $modes = [
         'manual' => ['label' => __('reminder.compose.modeManual'), 'description' => __('reminder.compose.modeManualDesc')],
@@ -23,8 +23,6 @@
     x-data="{
         mode: 'manual',
         frequency: 'weekly',
-        attachPdf: false,
-        attachExcel: false,
     }">
     @csrf
 
@@ -128,8 +126,8 @@
         <legend class="{{ $labelClass }}">{{ __('reminder.compose.attachments') }}</legend>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             @foreach ($attachments as $model => $attachment)
-                <label class="flex cursor-not-allowed items-start gap-3 rounded-xl border border-gray-200 p-4 opacity-60 dark:border-gray-800">
-                    <input type="checkbox" disabled x-model="{{ $model }}" class="{{ $checkboxClass }}">
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-4 transition-colors has-checked:border-brand-500 has-checked:bg-brand-50 has-focus-visible:ring-3 has-focus-visible:ring-brand-500/20 dark:border-gray-800 dark:has-checked:border-brand-500/50 dark:has-checked:bg-brand-500/10">
+                    <input type="checkbox" name="attachments[]" value="{{ $attachment['value'] }}" x-model="{{ $model }}" class="{{ $checkboxClass }}">
                     <span>
                         <span class="block text-sm font-medium text-gray-800 dark:text-white/90">{{ $attachment['label'] }}</span>
                         <span class="mt-0.5 block text-theme-xs text-gray-500 dark:text-gray-400">{{ $attachment['description'] }}</span>

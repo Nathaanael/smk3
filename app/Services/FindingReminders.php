@@ -76,15 +76,16 @@ class FindingReminders
      *
      * @param  Builder<NonConformity>  $pending
      * @param  list<int|string>|null  $only  ids of the chosen people; null means everyone
+     * @param  list<string>  $attachments  report formats to attach; see FindingReminderMail::ATTACHMENTS
      * @return Collection<int, FindingReminderMail>
      */
-    public function mails(Builder $pending, string $subject, string $message, ?array $only = null): Collection
+    public function mails(Builder $pending, string $subject, string $message, ?array $only = null, array $attachments = []): Collection
     {
         $link = route('non-conformities', ['status' => 'open']);
         $groups = $this->findingsPerPic($pending);
 
         return ($only === null ? $groups : $groups->only($only))
-            ->map(fn (Collection $findings) => new FindingReminderMail($findings->first()->picUser, $findings, $subject, $message, $link))
+            ->map(fn (Collection $findings) => new FindingReminderMail($findings->first()->picUser, $findings, $subject, $message, $link, $attachments))
             ->values();
     }
 

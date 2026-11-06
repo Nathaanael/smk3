@@ -17,6 +17,12 @@
                 <dt class="w-20 shrink-0 text-gray-500 dark:text-gray-400">{{ __('reminder.compose.subject') }}</dt>
                 <dd class="min-w-0 break-words text-gray-800 dark:text-white/90">{{ $subject }}</dd>
             </div>
+            @if ($attachments)
+                <div class="mt-2 flex gap-2">
+                    <dt class="w-20 shrink-0 text-gray-500 dark:text-gray-400">{{ __('reminder.compose.attachments') }}</dt>
+                    <dd class="min-w-0 break-words text-gray-800 dark:text-white/90">{{ implode(', ', $attachments) }}</dd>
+                </div>
+            @endif
         </dl>
 
         <iframe title="{{ __('reminder.preview.title') }}" sandbox srcdoc="{{ $html }}" class="min-h-[60vh] w-full flex-1 rounded-xl border border-gray-200 bg-white dark:border-gray-800"></iframe>

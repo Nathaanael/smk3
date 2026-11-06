@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\FindingReminders;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 uses(RefreshDatabase::class);
 
@@ -17,14 +18,15 @@ test('admins and auditors see the menu and the email sidebar', function (Role $r
         ->assertOk()
         ->assertSee('href="'.url('/email-reminders').'"', false)
         ->assertSee('<title>'.__('meta.emailReminders.title').'</title>', false)
-        ->assertSeeInOrder([__('smk3.comingSoon'), __('reminder.title')])
+        ->assertSee(__('reminder.title'))
+        ->assertDontSee('Halaman ini sedang dalam pengembangan')
         ->assertSee(__('reminder.compose.title'))
         ->assertSee(__('reminder.folders.pending'))
         ->assertSee(__('reminder.folders.sent'))
         ->assertSee(__('reminder.folders.failed'));
 })->with([Role::Admin, Role::Auditor]);
 
-test('the write message tab can send manually, while the schedule and attachments stay disabled', function () {
+test('the write message tab can send manually with attachments, while the schedule stays disabled', function () {
     $response = $this->actingAs(User::factory()->admin()->create())
         ->get('/email-reminders')
         ->assertOk()
@@ -46,7 +48,8 @@ test('the write message tab can send manually, while the schedule and attachment
         ->toContain('email-reminders\/send')
         ->toContain('email-reminders\/preview')
         ->not->toContain('@js(')
-        ->toMatch('/<input[^>]*disabled[^>]*x-model="attachPdf"/')
+        ->not->toMatch('/<input[^>]*disabled[^>]*x-model="attachPdf"/')
+        ->not->toMatch('/<input[^>]*disabled[^>]*x-model="attachExcel"/')
         ->toMatch('/<button[^>]*disabled[^>]*x-show="mode === \'schedule\'"|<button[^>]*x-show="mode === \'schedule\'"[^>]*disabled/');
 });
 
@@ -425,6 +428,70 @@ test('the preview shows the first recipient without sending anything', function 
         ->assertSee(__('reminder.preview.note', ['count' => 1]));
 
     expect($response->viewData('html'))->toContain('lantai licin');
+    Mail::assertNothingSent();
+});
+
+test('the chosen reports are attached and hold only the findings of that recipient', function () {
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee]);
+    $other = User::factory()->create(['otorisasi' => Role::Auditee]);
+    NonConformity::factory()->open()->create(['pic' => $pic->email, 'deskripsi_temuan' => 'temuan milik penerima']);
+    NonConformity::factory()->open()->create(['pic' => $other->email, 'deskripsi_temuan' => 'temuan milik orang lain']);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id], 'attachments' => ['pdf', 'xlsx']]))
+        ->assertExactJson(['sent' => 1, 'failed' => 0]);
+
+    $parts = Mail::mailer()->getSymfonyTransport()->messages()->sole()->getOriginalMessage()->getAttachments();
+    expect($parts)->toHaveCount(2);
+    [$pdf, $excel] = $parts;
+
+    expect($pdf->getFilename())->toEndWith('.pdf')
+        ->and($pdf->getBody())->toStartWith('%PDF')
+        ->and($excel->getFilename())->toEndWith('.xlsx');
+
+    // the workbook really opens, with this recipient's finding only
+    $file = tempnam(sys_get_temp_dir(), 'reminder');
+    file_put_contents($file, $excel->getBody());
+    $list = IOFactory::load($file)->getSheetByName(mb_substr(__('nc.report.listTitle'), 0, 31));
+    unlink($file);
+
+    $cells = collect($list->toArray())->flatten();
+    expect($cells->contains('temuan milik penerima'))->toBeTrue()
+        ->and($cells->contains('temuan milik orang lain'))->toBeFalse();
+});
+
+test('without a chosen report the email has no attachments', function () {
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee]);
+    NonConformity::factory()->open()->create(['pic' => $pic->email]);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [$pic->id], 'attachments' => []]))
+        ->assertExactJson(['sent' => 1, 'failed' => 0]);
+
+    expect(Mail::mailer()->getSymfonyTransport()->messages()->sole()->getOriginalMessage()->getAttachments())->toBeEmpty();
+});
+
+test('an unknown attachment format is rejected', function () {
+    Mail::fake();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->postJson(route('email-reminders.send'), reminderMessage(['recipients' => [1], 'attachments' => ['exe']]))
+        ->assertJsonValidationErrors('attachments.0');
+
+    Mail::assertNothingSent();
+});
+
+test('the preview names the chosen attachments without building them', function () {
+    Mail::fake();
+    $pic = User::factory()->create(['otorisasi' => Role::Auditee]);
+    NonConformity::factory()->open()->create(['pic' => $pic->email]);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->post(route('email-reminders.preview'), reminderMessage(['recipients' => [$pic->id], 'attachments' => ['pdf']]))
+        ->assertOk()
+        ->assertSee(__('reminder.compose.attachments'))
+        ->assertSee('.pdf');
+
     Mail::assertNothingSent();
 });
 
