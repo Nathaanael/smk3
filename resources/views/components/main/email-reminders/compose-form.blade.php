@@ -96,7 +96,6 @@
 
         <div class="flex flex-col gap-1 text-theme-xs sm:col-span-2">
             <p class="font-medium text-gray-800 dark:text-white/90" x-text="scheduleStatus.text"></p>
-            <p class="text-warning-600 dark:text-warning-500" x-show="scheduleStatus.logOnly">{{ __('reminder.schedule.logOnly') }}</p>
             @unless ($canEditSchedule)
                 <p class="text-gray-500 dark:text-gray-400">{{ __('reminder.schedule.adminOnly') }}</p>
             @endunless

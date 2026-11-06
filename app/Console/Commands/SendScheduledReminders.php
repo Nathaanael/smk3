@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class SendScheduledReminders extends Command
 {
-    protected $signature = 'reminders:send-scheduled {--now : Run right away, whatever its time and whether it is on, to try it out}';
+    protected $signature = 'reminders:send-scheduled';
 
     protected $description = 'Send the automatic reminder emails when they are due';
 
@@ -23,20 +23,9 @@ class SendScheduledReminders extends Command
         $schedule = ReminderSchedule::first();
         $now = now();
 
-        if (! $schedule) {
-            if ($this->option('now')) {
-                $this->warn('No schedule has been saved yet.');
-            }
-
+        if (! $schedule?->isDue($now) || ! $schedule->claim($now)) {
             return self::SUCCESS;
         }
-
-        if ((! $this->option('now') && ! $schedule->isDue($now)) || ! $schedule->claim($now)) {
-            return self::SUCCESS;
-        }
-
-        // only "log" unless changed on purpose in .env (REMINDER_SCHEDULE_MAILER)
-        $mailer = config('smk3.reminder_schedule_mailer');
 
         $mails = $reminders->mails(
             NonConformity::query()->awaitingRepairPhoto()->when($schedule->pabrik, fn (Builder $query, string $plant) => $query->where('pabrik', $plant)),
@@ -46,9 +35,9 @@ class SendScheduledReminders extends Command
             $schedule->attachments ?? [],
         );
 
-        $failed = $mails->reject(fn ($mail) => $reminders->deliver($mail, null, $mailer))->count();
+        $failed = $mails->reject(fn ($mail) => $reminders->deliver($mail, null))->count();
 
-        $this->info("Mailer {$mailer}: ".($mails->count() - $failed)." sent, {$failed} failed.");
+        $this->info(($mails->count() - $failed)." sent, {$failed} failed.");
 
         return self::SUCCESS;
     }

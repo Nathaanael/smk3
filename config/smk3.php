@@ -53,10 +53,6 @@ return [
     |  - achievement: % of criteria without a finding, (total - NC) / total (Kriteria)
     | Total Score = closed score + achievement score.
     */
-    // Mailer of the automatic reminder. "log" only writes the emails to the application log, whatever
-    // MAIL_MAILER says; real sending needs REMINDER_SCHEDULE_MAILER=smtp in .env.
-    'reminder_schedule_mailer' => env('REMINDER_SCHEDULE_MAILER', 'log'),
-
     'report' => [
         'scores' => [
             'closed' => [80 => 5, 70 => 4, 60 => 3, 50 => 2, 0 => 1],

@@ -21,15 +21,13 @@ class FindingReminders
     /**
      * Send one email and record the attempt. A failure is recorded instead of thrown, so it
      * does not stop the next email. Without a sender it comes from the automatic schedule.
-     *
-     * @param  string|null  $mailer  null for the default mailer
      */
-    public function deliver(FindingReminderMail $mail, ?User $sender, ?string $mailer = null): bool
+    public function deliver(FindingReminderMail $mail, ?User $sender): bool
     {
         $error = null;
 
         try {
-            Mail::mailer($mailer)->to($mail->recipient)->send($mail);
+            Mail::to($mail->recipient)->send($mail);
         } catch (Throwable $exception) {
             report($exception);
             $error = Str::limit($exception->getMessage(), 1000);
@@ -38,7 +36,7 @@ class FindingReminders
         ReminderEmail::create([
             'sender_id' => $sender?->id,
             'scheduled' => $sender === null,
-            'mailer' => $mailer ?? config('mail.default'),
+            'mailer' => config('mail.default'),
             'recipient_name' => $mail->recipient->name,
             'recipient_email' => $mail->recipient->email,
             'subject' => Str::limit($mail->envelope()->subject, 250),

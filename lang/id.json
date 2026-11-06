@@ -74,7 +74,6 @@
     "reminder.schedule.saved": "Jadwal berhasil disimpan.",
     "reminder.schedule.statusActive": "Aktif. Pengiriman berikutnya: :next",
     "reminder.schedule.statusInactive": "Nonaktif. Tidak ada email yang dikirim otomatis.",
-    "reminder.schedule.logOnly": "Mode uji: email terjadwal hanya ditulis ke log aplikasi dan tidak benar-benar terkirim.",
     "reminder.schedule.adminOnly": "Hanya admin yang dapat mengubah jadwal.",
     "reminder.schedule.recipients": "Penerima: semua PIC yang punya temuan Open tanpa Foto Perbaikan saat jadwal berjalan.",
     "reminder.compose.recipients": "Penerima",

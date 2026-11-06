@@ -1207,7 +1207,6 @@
     "reminder.schedule.saved": "The schedule was saved.",
     "reminder.schedule.statusActive": "On. Next send: :next",
     "reminder.schedule.statusInactive": "Off. No email goes out automatically.",
-    "reminder.schedule.logOnly": "Trial mode: scheduled emails are only written to the application log and are not really sent.",
     "reminder.schedule.adminOnly": "Only admins can change the schedule.",
     "reminder.schedule.recipients": "Recipients: every PIC with an Open finding without a Repair Photo when the schedule runs.",
     "reminder.compose.recipients": "Recipients",

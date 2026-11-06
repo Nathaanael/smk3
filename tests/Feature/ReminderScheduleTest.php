@@ -60,39 +60,46 @@ test('the command is on the Laravel schedule, checking every minute', function (
     $this->artisan('schedule:list')->expectsOutputToContain('reminders:send-scheduled')->assertSuccessful();
 });
 
-test('scheduled emails never reach the real mail server while the mailer is log', function () {
-    $logFile = tempnam(sys_get_temp_dir(), 'mail-log');
-    // MAIL_MAILER points at a mail server: reaching it would fail this send
-    config([
-        'mail.default' => 'smtp',
-        'mail.mailers.smtp.host' => '127.0.0.1',
-        'mail.mailers.smtp.port' => 1,
-        'mail.mailers.smtp.timeout' => 1,
-        'mail.mailers.log.channel' => 'mail-check',
-        'logging.channels.mail-check' => ['driver' => 'single', 'path' => $logFile],
-    ]);
-    expect(config('smk3.reminder_schedule_mailer'))->toBe('log');
-
+test('scheduled emails use the mailer of the application and show in the history', function () {
+    // phpunit.xml: MAIL_MAILER=array, so this stays in memory
     $pic = picWithFinding();
     reminderSchedule();
     $this->travelTo(atJakarta('2026-11-09 08:00'));
 
     $this->artisan('reminders:send-scheduled')->assertSuccessful();
 
-    $log = ReminderEmail::sole();
-    expect($log)
-        ->status->toBe(ReminderEmail::SENT)
-        ->mailer->toBe('log')
-        ->scheduled->toBeTrue()
-        ->sender_id->toBeNull()
-        ->and(file_get_contents($logFile))->toContain($pic->email);
+    $sent = Mail::mailer()->getSymfonyTransport()->messages();
+    expect(array_map(fn ($address) => $address->getAddress(), $sent->sole()->getEnvelope()->getRecipients()))->toBe([$pic->email]);
 
-    unlink($logFile);
+    expect(ReminderEmail::sole())
+        ->status->toBe(ReminderEmail::SENT)
+        ->mailer->toBe('array')
+        ->scheduled->toBeTrue()
+        ->sender_id->toBeNull();
 
     $this->actingAs(User::factory()->admin()->create())->get('/email-reminders')
-        ->assertSee(__('reminder.history.logOnly'))
-        ->assertSee(__('reminder.history.scheduled'));
+        ->assertSee(__('reminder.history.scheduled'))
+        ->assertDontSee(__('reminder.history.logOnly'));
 });
+
+test('an email that was only written to the log stays marked in the history', function () {
+    ReminderEmail::create([
+        'scheduled' => true,
+        'mailer' => 'log',
+        'recipient_name' => 'Budi',
+        'recipient_email' => 'budi@example.test',
+        'subject' => 'Pengingat',
+        'findings_count' => 1,
+        'status' => ReminderEmail::SENT,
+    ]);
+
+    $this->actingAs(User::factory()->admin()->create())->get('/email-reminders')
+        ->assertSee(__('reminder.history.logOnly'));
+});
+
+test('the command has no way to skip the schedule', function () {
+    $this->artisan('reminders:send-scheduled --now')->assertFailed();
+})->throws(Symfony\Component\Console\Exception\RuntimeException::class);
 
 test('a weekly schedule goes out once on its day, from its time on', function () {
     Mail::fake();
@@ -200,17 +207,6 @@ test('the schedule includes its attachments', function () {
     Mail::assertSent(FindingReminderMail::class, fn (FindingReminderMail $mail) => count($mail->attachments()) === 1);
 });
 
-test('the try-out option runs right away, even when it is off', function () {
-    Mail::fake();
-    picWithFinding();
-    reminderSchedule(['active' => false]);
-    $this->travelTo(atJakarta('2026-11-10 13:00'));
-
-    $this->artisan('reminders:send-scheduled --now')->assertSuccessful();
-
-    Mail::assertSentCount(1);
-});
-
 test('admins can save the schedule, which is off until they turn it on', function () {
     $this->travelTo(atJakarta('2026-11-06 09:00'));
     $admin = User::factory()->admin()->create();
@@ -221,8 +217,7 @@ test('admins can save the schedule, which is off until they turn it on', functio
     $this->actingAs($admin)
         ->postJson(route('email-reminders.schedule'), schedulePayload(['active' => false]))
         ->assertOk()
-        ->assertJsonPath('status.text', __('reminder.schedule.statusInactive'))
-        ->assertJsonPath('status.logOnly', true);
+        ->assertJsonPath('status.text', __('reminder.schedule.statusInactive'));
 
     $response = $this->actingAs($admin)
         ->postJson(route('email-reminders.schedule'), schedulePayload(['time' => '08:30', 'attachments' => ['xlsx']]))

@@ -126,7 +126,7 @@ class EmailController extends Controller
     }
 
     /**
-     * @return array{text: string, logOnly: bool}
+     * @return array{text: string}
      */
     private function scheduleStatus(?ReminderSchedule $schedule): array
     {
@@ -136,7 +136,6 @@ class EmailController extends Controller
             'text' => $next
                 ? __('reminder.schedule.statusActive', ['next' => $next->copy()->setTimezone(ReminderEmail::TIMEZONE)->translatedFormat('l, d M Y H:i').' WIB'])
                 : __('reminder.schedule.statusInactive'),
-            'logOnly' => config('smk3.reminder_schedule_mailer') === 'log',
         ];
     }
 
